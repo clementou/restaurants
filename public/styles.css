@@ -75,35 +75,11 @@ select {
 .skip-link:focus {
   top: 10px;
 }
-.masthead {
-  margin: 0 48px;
-  height: 83px;
-  border-bottom: 1px solid var(--line);
+.collection-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-}
-.home-link {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 1.7px;
-  text-decoration: none;
-}
-.monogram {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-style: italic;
-  font-size: 32px;
-  letter-spacing: -2px;
-  color: var(--wine);
-}
-.masthead-note {
-  font-size: 10px;
-  letter-spacing: 2.1px;
-  color: var(--muted);
+  flex-shrink: 0;
+  gap: 14px;
 }
 .export-link {
   text-decoration: none;
@@ -361,7 +337,7 @@ select {
   display: grid;
   grid-template-columns: minmax(340px, 40%) minmax(0, 1fr);
   height: 610px;
-  height: clamp(460px, calc(100dvh - 445px), 760px);
+  height: clamp(460px, calc(100dvh - 362px), 760px);
 }
 .list-panel {
   display: flex;
@@ -715,11 +691,22 @@ select {
 }
 .page-footer {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
   padding: 20px 0 25px;
   font-size: 10px;
   color: #8e9281;
+}
+.data-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.data-links a {
+  color: var(--green);
+  text-underline-offset: 3px;
 }
 .page-footer > span:first-child {
   font-family: "Instrument Serif", Georgia, serif;
@@ -756,15 +743,10 @@ select {
   text-align: center;
 }
 @media (min-width: 1600px) {
-  main,
-  .masthead {
+  main {
     max-width: 1600px;
     margin-left: auto;
     margin-right: auto;
-  }
-  .masthead {
-    padding-left: 48px;
-    padding-right: 48px;
   }
   .workspace {
     grid-template-columns: 480px 1fr;
@@ -773,9 +755,6 @@ select {
 @media (max-width: 1100px) {
   main {
     padding: 0 28px;
-  }
-  .masthead {
-    margin: 0 28px;
   }
   .stats {
     gap: 27px;
@@ -815,13 +794,6 @@ select {
 @media (max-width: 800px) {
   main {
     padding: 0 20px;
-  }
-  .masthead {
-    margin: 0 20px;
-    height: 65px;
-  }
-  .masthead-note {
-    display: none;
   }
   .intro {
     padding: 30px 0 27px;
@@ -962,12 +934,6 @@ select {
 @media (max-width: 480px) {
   main {
     padding: 0 12px;
-  }
-  .masthead {
-    margin: 0 16px;
-  }
-  .home-link {
-    font-size: 9px;
   }
   .export-link {
     font-size: 10px;

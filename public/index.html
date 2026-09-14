@@ -9,6 +9,8 @@
       content="Clement's personal restaurant atlas. Explore my Beli rankings, ratings, and places worth a detour around the world."
     />
     <title>At the table — Clement's restaurant atlas</title>
+    <link rel="alternate" type="application/json" title="All ranked places (JSON)" href="./data.json" />
+    <link rel="alternate" type="text/csv" title="All ranked places (CSV)" href="./restaurants.csv" />
     <script>
       // The same bundle works at the Netlify root and behind /restaurants.
       if (location.pathname === "/restaurants")
@@ -28,15 +30,6 @@
   </head>
   <body>
     <a class="skip-link" href="#places">Skip to restaurants</a>
-    <header class="masthead">
-      <a class="home-link" href="https://clementou.com"
-        ><span class="monogram">c.</span> CLEMENT OU</a
-      >
-      <span class="masthead-note">A PERSONAL RESTAURANT ATLAS</span>
-      <a class="export-link" href="./restaurants.csv" download
-        ><span aria-hidden="true">↓</span> Download CSV</a
-      >
-    </header>
     <main>
       <section class="intro" aria-labelledby="title">
         <div>
@@ -114,9 +107,12 @@
             class="quick-cities"
             aria-label="Quick city filters"
           ></div>
+          <div class="collection-actions">
+            <a class="export-link" href="./restaurants.csv" download aria-label="Download filtered places as CSV"><span aria-hidden="true">↓</span> CSV</a>
           <div class="view-switch" aria-label="Display mode">
             <button data-view="list" aria-pressed="true">List</button
             ><button data-view="map" aria-pressed="false">Map</button>
+          </div>
           </div>
         </div>
         <div class="workspace" data-view="list">
@@ -165,7 +161,7 @@
       </section>
       <footer class="page-footer">
         <span>A little hungry, a little curious.</span
-        ><span
+        ><nav class="data-links" aria-label="Download the full dataset">Raw data <a href="./data.json" type="application/json">JSON</a><a href="./restaurants.csv" type="text/csv">CSV</a></nav><span
           >Ranked on Beli <span aria-hidden="true">↗</span>
           <span class="divider">·</span> Made by Clement</span
         >

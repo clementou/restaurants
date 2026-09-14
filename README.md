@@ -49,6 +49,21 @@ scores can still have distinct underlying scores and ranks. The CSV retains the
 exact score and category rank. The download button exports the current filters;
 `restaurants.csv` is the full snapshot.
 
+## Access from an agent or script
+
+The full dataset is available without authentication or browser JavaScript:
+
+- JSON: https://clementou.com/restaurants/data.json
+- CSV: https://clementou.com/restaurants/restaurants.csv
+
+JSON is recommended for programmatic use. It contains `updatedAt` (UTC export
+time), a `categories` code-to-label mapping, and the `places` array. Each place
+includes its Beli rating-record `id`, `businessId`, `category`, category `rank`,
+exact numeric `score`, name, location, cuisine array, and external links. `lat`
+and `lng` are nullable. These are full snapshots, independent of UI filters;
+use `id` to match rating records across exports. The HTML advertises both files
+with alternate-format links and visible footer links.
+
 ## Credentials and public data
 
 The login script saves access/refresh tokens in `.beli-tokens.json` with mode
