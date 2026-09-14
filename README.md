@@ -9,7 +9,8 @@ category/city/cuisine filters, search, and CSV export.
 
 ## Run locally
 
-Requires Node.js, npm, and Python 3. No Python dependencies.
+Requires Node.js 22+, npm, and Python 3. No Python dependencies.
+Set `CARTO_BASEMAP_API_KEY=your-key` in a local `.env` file before building.
 
 ```sh
 npm ci
@@ -18,7 +19,12 @@ npm run dev
 
 Open http://localhost:4173. A public snapshot is included, so browsing and building
 do not require Beli credentials. The map uses locally bundled Leaflet and
-MarkerCluster with CARTO/OpenStreetMap tiles; no map API key is needed.
+MarkerCluster with CARTO/OpenStreetMap tiles. CARTO requires a
+[free basemap API key](https://carto.com/basemaps/apikey/).
+The build reads `CARTO_BASEMAP_API_KEY` from `.env` locally or the Netlify build
+environment and generates `dist/map-config.js`. The key is not committed to Git,
+but is visible to browsers when they request tiles, as required by CARTO's client
+integration. Restrict it to the site's domains in the CARTO dashboard.
 
 ## Refresh your Beli data
 

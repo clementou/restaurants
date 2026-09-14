@@ -1,3 +1,4 @@
+import { cartoKey } from "./map-config.js";
 import {
   categories,
   filterPlaces,
@@ -42,7 +43,7 @@ function initMap() {
   }).setView([28, 0], 2);
   L.control.zoom({ position: "bottomright" }).addTo(map);
   const tiles = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`,
     {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',

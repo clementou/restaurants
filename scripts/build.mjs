@@ -1,10 +1,22 @@
-import { cp, mkdir, rm, readFile } from "node:fs/promises";
+import { cp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
+
+try {
+  process.loadEnvFile(".env");
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+const cartoKey = process.env.CARTO_BASEMAP_API_KEY;
+if (!cartoKey) throw new Error("Set CARTO_BASEMAP_API_KEY in .env or the build environment.");
 
 const data = JSON.parse(await readFile("public/data.json", "utf8"));
 if (!Array.isArray(data.places) || !data.places.length)
   throw new Error("Run npm run sync to export your Beli list first.");
 await rm("dist", { recursive: true, force: true });
 await cp("public", "dist", { recursive: true });
+await writeFile(
+  "dist/map-config.js",
+  `export const cartoKey = ${JSON.stringify(cartoKey)};\n`,
+);
 await mkdir("dist/vendor", { recursive: true });
 for (const [source, target] of [
   ["leaflet/dist/leaflet.js", "leaflet.js"],
