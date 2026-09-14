@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f3ec" />
+    <meta
+      name="description"
+      content="Clément's personal restaurant atlas. Explore my Beli rankings, ratings, and places worth a detour around the world."
+    />
+    <title>At the table — Clément's restaurant atlas</title>
+    <script>
+      // The same bundle works at the Netlify root and behind /restaurants.
+      if (location.pathname === "/restaurants")
+        history.replaceState(
+          null,
+          "",
+          "/restaurants/" + location.search + location.hash,
+        );
+    </script>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./vendor/leaflet.css" />
+    <link rel="stylesheet" href="./vendor/markercluster.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./vendor/leaflet.js" defer></script>
+    <script src="./vendor/markercluster.js" defer></script>
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#places">Skip to restaurants</a>
+    <header class="masthead">
+      <a class="home-link" href="https://clementou.com"
+        ><span class="monogram">c.</span> CLÉMENT OU</a
+      >
+      <span class="masthead-note">A PERSONAL RESTAURANT ATLAS</span>
+      <a class="export-link" href="./restaurants.csv" download
+        ><span aria-hidden="true">↓</span> Download CSV</a
+      >
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <div>
+          <p class="eyebrow">
+            <span class="small-star" aria-hidden="true">✳</span> GOOD FOOD,
+            EVERYWHERE.
+          </p>
+          <h1 id="title">At the <em>table.</em></h1>
+          <p class="intro-copy">
+            From neighborhood favorites to the worth-a-flight kind. <br />Every
+            place I've ranked on Beli, all on one map.
+          </p>
+        </div>
+        <div class="intro-aside">
+          <div class="stats" aria-label="Collection statistics">
+            <div><strong id="total">—</strong><span>PLACES TRIED</span></div>
+            <div><strong id="countries">—</strong><span>COUNTRIES</span></div>
+            <div class="plate-mark" aria-hidden="true">
+              <i></i><span>bon<br />appétit</span>
+            </div>
+          </div>
+          <p class="update-note">
+            <span class="live-dot"></span> My ratings, out of 10
+            <span class="divider">/</span>
+            <span id="updated">Loading collection…</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="explorer" aria-label="Explore restaurants">
+        <div class="toolbar">
+          <label class="search"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 5 5" /></svg
+            ><input
+              id="search"
+              type="search"
+              placeholder="Find a restaurant, a city, a cuisine…"
+              aria-label="Search restaurants"
+          /></label>
+          <div class="filters">
+            <label
+              ><span class="sr-only">Category</span
+              ><select id="category">
+                <option value="">All places</option>
+              </select></label
+            >
+            <label
+              ><span class="sr-only">City</span
+              ><select id="city">
+                <option value="">All cities</option>
+              </select></label
+            >
+            <label
+              ><span class="sr-only">Cuisine</span
+              ><select id="cuisine">
+                <option value="">All cuisines</option>
+              </select></label
+            >
+            <button id="favorites" class="favorite-filter" aria-pressed="false">
+              <span aria-hidden="true">✧</span> 9.0 & above
+            </button>
+          </div>
+        </div>
+        <div class="explorer-meta">
+          <div
+            id="quick-cities"
+            class="quick-cities"
+            aria-label="Quick city filters"
+          ></div>
+          <div class="view-switch" aria-label="Display mode">
+            <button data-view="list" aria-pressed="true">List</button
+            ><button data-view="map" aria-pressed="false">Map</button>
+          </div>
+        </div>
+        <div class="workspace" data-view="list">
+          <section class="list-panel" aria-label="Ranked restaurant list">
+            <div class="list-heading">
+              <span id="result-count" role="status" aria-live="polite"
+                >Loading places…</span
+              ><label
+                ><span class="sr-only">Sort restaurants</span
+                ><select id="sort">
+                  <option value="rank">My rating ↓</option>
+                  <option value="name">Name A–Z</option>
+                </select></label
+              >
+            </div>
+            <div id="places" class="places" tabindex="-1">
+              <div class="loading-state">Setting the table…</div>
+            </div>
+            <div class="list-footer">
+              <span>Ranks are within each Beli category.</span
+              ><button id="reset">Reset filters ↺</button>
+            </div>
+          </section>
+          <section class="map-panel" aria-label="Restaurant map">
+            <div
+              id="map"
+              aria-label="Interactive map of ranked restaurants"
+            ></div>
+            <div class="map-top">
+              <span class="map-label"
+                ><span class="live-dot"></span> THE FOOD ATLAS</span
+              ><button id="fit-map" title="Fit all matching places">
+                Show all places <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+            <div class="map-legend">
+              <span>MY RATING</span><i class="legend-dot exceptional"></i> 9+
+              <i class="legend-dot great"></i> 7–9
+              <i class="legend-dot other"></i> &lt;7
+            </div>
+            <div id="map-error" class="map-error" hidden>
+              Map tiles couldn’t load. The restaurant list is still available.
+            </div>
+          </section>
+        </div>
+      </section>
+      <footer class="page-footer">
+        <span>A little hungry, a little curious.</span
+        ><span
+          >Ranked on Beli <span aria-hidden="true">↗</span>
+          <span class="divider">·</span> Made by Clément</span
+        >
+      </footer>
+    </main>
+    <noscript
+      ><p class="noscript">
+        Enable JavaScript to explore the map, or
+        <a href="./restaurants.csv">download the restaurant CSV</a>.
+      </p></noscript
+    >
+  </body>
+</html>

@@ -1,0 +1,118 @@
+export const categories = {
+  RES: "Restaurants",
+  COF: "Coffee & tea",
+  DES: "Dessert",
+  BAR: "Bars",
+  BAK: "Bakeries",
+};
+export const fold = (value) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+export function filterPlaces(
+  places,
+  {
+    query = "",
+    category = "",
+    city = "",
+    cuisine = "",
+    favorites = false,
+    sort = "rank",
+  },
+) {
+  const words = fold(query.trim()).split(/\s+/).filter(Boolean);
+  return places
+    .filter((place) => {
+      const text = fold(
+        [
+          place.name,
+          place.city,
+          place.country,
+          place.neighborhood,
+          ...place.cuisines,
+        ].join(" "),
+      );
+      return (
+        (!category || place.category === category) &&
+        (!city || place.city === city) &&
+        (!cuisine || place.cuisines.includes(cuisine)) &&
+        (!favorites || place.score >= 9) &&
+        words.every((word) => text.includes(word))
+      );
+    })
+    .sort(
+      sort === "name"
+        ? (a, b) => a.name.localeCompare(b.name) || a.rank - b.rank
+        : (a, b) => b.score - a.score || a.rank - b.rank,
+    );
+}
+
+export const hasCoordinates = (p) =>
+  Number.isFinite(p.lat) &&
+  Number.isFinite(p.lng) &&
+  Math.abs(p.lat) <= 90 &&
+  Math.abs(p.lng) <= 180;
+export const tier = (p) =>
+  p.score >= 9 ? "exceptional" : p.score >= 7 ? "great" : "other";
+export const rating = (p) => p.score.toFixed(1);
+export const escapeHTML = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        character
+      ],
+  );
+export const mapsURL = (p) =>
+  "https://www.google.com/maps/search/?" +
+  new URLSearchParams({
+    api: "1",
+    query: `${p.name} ${p.city}`,
+    ...(p.placeId ? { query_place_id: p.placeId } : {}),
+  });
+export function safeURL(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+export function toCSV(places) {
+  const cell = (value) => {
+    let text = String(value ?? "");
+    if (/^\s*[=+@-]/.test(text)) text = "'" + text;
+    return '"' + text.replaceAll('"', '""') + '"';
+  };
+  return [
+    [
+      "category",
+      "category_rank",
+      "name",
+      "rating",
+      "city",
+      "country",
+      "cuisines",
+      "latitude",
+      "longitude",
+      "google_maps_url",
+    ],
+    ...places.map((p) => [
+      categories[p.category],
+      p.rank,
+      p.name,
+      p.score,
+      p.city,
+      p.country,
+      p.cuisines.join("; "),
+      p.lat,
+      p.lng,
+      mapsURL(p),
+    ]),
+  ]
+    .map((row) => row.map(cell).join(","))
+    .join("\r\n");
+}

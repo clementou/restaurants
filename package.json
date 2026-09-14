@@ -1,0 +1,17 @@
+{
+  "name": "clementou-restaurants",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && python3 -m http.server 4173 --directory dist",
+    "sync": "python3 sync_beli.py",
+    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'",
+    "deploy": "npm run build && netlify deploy --prod --no-build --dir dist --site clementou-restaurants"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3"
+  }
+}
