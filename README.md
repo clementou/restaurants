@@ -1,6 +1,6 @@
 # At the table
 
-Clément's Beli atlas: ranked places, personal ratings, a clustered interactive map,
+Clement's Beli atlas: ranked places, personal ratings, a clustered interactive map,
 category/city/cuisine filters, search, and CSV export.
 
 - Website: https://clementou.com/restaurants/
