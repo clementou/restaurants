@@ -34,6 +34,118 @@ let places = [],
   selectedId = null;
 const markers = new Map();
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const dropdowns = [];
+
+function initDropdowns() {
+  let closeOpen = () => {};
+  for (const select of document.querySelectorAll("select")) {
+    const label = select.closest("label");
+    const name = label.querySelector(".sr-only").textContent;
+    const wrapper = document.createElement("div");
+    wrapper.className = "dropdown";
+    label.replaceWith(wrapper);
+    wrapper.append(select);
+    select.hidden = true;
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "dropdown-trigger";
+    trigger.setAttribute("role", "combobox");
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    const text = document.createElement("span");
+    trigger.append(text);
+    wrapper.append(trigger);
+    const menu = document.createElement("div");
+    menu.id = `${select.id}-menu`;
+    menu.className = "dropdown-menu";
+    menu.setAttribute("role", "listbox");
+    menu.setAttribute("aria-label", name);
+    menu.hidden = true;
+    document.body.append(menu);
+    trigger.setAttribute("aria-controls", menu.id);
+    let active = 0, typed = "", typedAt = 0;
+    const options = Array.from(select.options, (option, index) => {
+      const item = document.createElement("div");
+      item.id = `${select.id}-option-${index}`;
+      item.className = "dropdown-option";
+      item.setAttribute("role", "option");
+      item.textContent = option.textContent;
+      item.addEventListener("mousedown", event => event.preventDefault());
+      item.addEventListener("click", () => choose(index));
+      menu.append(item);
+      return item;
+    });
+    function sync() {
+      text.textContent = select.selectedOptions[0]?.textContent || "";
+      trigger.setAttribute("aria-label", `${name}: ${text.textContent}`);
+      trigger.disabled = select.disabled;
+      options.forEach((item, index) => item.setAttribute("aria-selected", String(index === select.selectedIndex)));
+    }
+    function highlight(index) {
+      active = Math.max(0, Math.min(options.length - 1, index));
+      options.forEach((item, i) => item.classList.toggle("active", i === active));
+      trigger.setAttribute("aria-activedescendant", options[active].id);
+      options[active].scrollIntoView({ block: "nearest" });
+    }
+    function close() {
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.removeAttribute("aria-activedescendant");
+      typed = "";
+    }
+    function open() {
+      closeOpen();
+      closeOpen = close;
+      menu.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.min(Math.max(rect.width, 210), innerWidth - 24);
+      menu.style.width = `${width}px`;
+      menu.style.left = `${Math.max(12, Math.min(rect.left, innerWidth - width - 12))}px`;
+      const below = innerHeight - rect.bottom - 18;
+      const above = rect.top - 18;
+      const up = below < 220 && above > below;
+      menu.style.maxHeight = `${Math.max(60, Math.min(300, up ? above : below))}px`;
+      menu.style.top = up ? "auto" : `${rect.bottom + 6}px`;
+      menu.style.bottom = up ? `${innerHeight - rect.top + 6}px` : "auto";
+      highlight(Math.max(0, select.selectedIndex));
+    }
+    function choose(index) {
+      select.selectedIndex = index;
+      close();
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      trigger.focus({ preventScroll: true });
+    }
+    trigger.addEventListener("click", () => menu.hidden ? open() : close());
+    trigger.addEventListener("blur", close);
+    trigger.addEventListener("keydown", event => {
+      if (event.key === "Tab") { close(); return; }
+      if (event.key === "Escape") { close(); event.preventDefault(); return; }
+      if (["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(event.key)) {
+        event.preventDefault();
+        if (menu.hidden) { open(); return; }
+        if (event.key === "Enter" || event.key === " ") choose(active);
+        else highlight(event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : active + (event.key === "ArrowDown" ? 1 : -1));
+      } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        if (menu.hidden) open();
+        typed = (Date.now() - typedAt > 700 ? "" : typed) + event.key.toLocaleLowerCase();
+        typedAt = Date.now();
+        const index = options.findIndex(item => item.textContent.toLocaleLowerCase().startsWith(typed));
+        if (index >= 0) highlight(index);
+      }
+    });
+    document.addEventListener("pointerdown", event => {
+      if (!wrapper.contains(event.target) && !menu.contains(event.target)) close();
+    });
+    dropdowns.push({ sync });
+    sync();
+  }
+  window.addEventListener("resize", () => closeOpen());
+  document.addEventListener("scroll", event => {
+    if (!event.target.closest?.(".dropdown-menu")) closeOpen();
+  }, true);
+}
 
 function initMap() {
   if (!window.L) {
@@ -176,6 +288,7 @@ function render({ updateMap = true } = {}) {
   $("#cuisine").value = state.cuisine;
   $("#sort").value = state.sort;
   $("#collection").value = state.collection;
+  dropdowns.forEach(dropdown => dropdown.sync());
   const unpinned = filtered.filter(p => !hasCoordinates(p)).length;
   $("#collection-note").textContent = unpinned
     ? `${unpinned.toLocaleString()} places have no map location yet. Use their Google Maps links to view them.` : "";
@@ -387,6 +500,7 @@ async function init() {
   window.addEventListener("resize", () => map?.invalidateSize());
   $("#sort").disabled = false;
   $("#sort-direction").disabled = false;
+  initDropdowns();
 }
 
 init().catch(() => {
