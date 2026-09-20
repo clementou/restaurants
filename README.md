@@ -116,6 +116,22 @@ with alternate-format links and visible footer links.
 
 ## Credentials and public data
 
+### Google Maps import setup
+
+The Google Cloud project `clementou-restaurants` has Drive API access enabled.
+Its service account is
+`takeout-reader@clementou-restaurants.iam.gserviceaccount.com`; share the Takeout
+destination folder with this account as **Viewer**. The owner's Google account
+can impersonate this service account for short-lived access without a private
+key. No project-wide data roles were granted to the service account.
+
+For “Want to go,” select **Saved** in Google Takeout. **Maps** and **Maps (your
+places)** are different exports; the latter describes its saved-place data as
+starred places. The current shared export contains those Maps products, so the
+Want to go import is waiting for a Saved export. Automatic Drive imports are
+not yet configured. Raw downloads belong in the gitignored `.takeout/` folder,
+outside the published `public/` directory.
+
 The login script saves access/refresh tokens in `.beli-tokens.json` with mode
 `0600`. It never saves the password. Token files, `.env` files, and Netlify state
 are gitignored. The build publishes only `public/` and map library assets, never

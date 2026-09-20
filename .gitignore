@@ -6,3 +6,5 @@ dist/
 .netlify/
 .shots/
 .env*
+.takeout/
+gha-creds-*.json
