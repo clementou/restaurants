@@ -22,7 +22,6 @@ jobs:
       NETLIFY_SITE_ID: 03425c78-ea4e-4d28-8ad4-b071f896ac47
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       CARTO_BASEMAP_API_KEY: ${{ secrets.CARTO_BASEMAP_API_KEY }}
-      BELI_TOKEN_PATH: ${{ runner.temp }}/beli-tokens.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,6 +33,7 @@ jobs:
           python-version: '3.12'
       - name: Check configuration
         run: |
+          echo "BELI_TOKEN_PATH=$RUNNER_TEMP/beli-tokens.json" >> "$GITHUB_ENV"
           test -n "$NETLIFY_AUTH_TOKEN" || { echo 'Missing NETLIFY_AUTH_TOKEN secret'; exit 1; }
           test -n "$CARTO_BASEMAP_API_KEY" || { echo 'Missing CARTO_BASEMAP_API_KEY secret'; exit 1; }
       - name: Install dependencies and verify code
