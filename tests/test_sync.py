@@ -14,6 +14,17 @@ def row(identifier, category, score):
 
 
 class ExportTests(unittest.TestCase):
+    def test_added_date_comes_from_ranking_creation(self):
+        source = row(1, "RES", 8)
+        source["created_dt"] = "2026-09-19T23:30:00-07:00"
+        source["business"]["created_dt"] = "2020-01-01T00:00:00Z"
+        place = normalize([source])[0]
+        self.assertEqual(place["addedAt"], "2026-09-20T06:30:00+00:00")
+        self.assertNotIn("visit_dates", place)
+        for value in [None, "invalid", "2026-09-19", 123]:
+            source["created_dt"] = value
+            self.assertIsNone(normalize([source])[0]["addedAt"])
+
     def test_rotated_session_survives_failed_fetch(self):
         claims = base64.urlsafe_b64encode(b'{"user_id": "test"}').decode().rstrip("=")
         refreshed = {"access": f"header.{claims}.signature", "refresh": "new-session"}

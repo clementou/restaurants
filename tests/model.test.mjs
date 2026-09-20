@@ -72,6 +72,22 @@ test("CSV escapes quotes, commas and spreadsheet formulas", () => {
   assert.ok(csv.includes('"\'=1+2"'));
   assert.ok(csv.includes('"category_rank"'));
 });
+test("recent sort uses creation times across categories and keeps unknown dates last", () => {
+  const dated = [
+    { ...places[0], addedAt: "2026-09-20T10:00:00Z" },
+    { ...places[1], addedAt: "2026-09-20T04:00:00-07:00" },
+    { ...places[2], addedAt: "2026-09-21T00:00:00Z" },
+    { ...places[1], id: 4, addedAt: null },
+    { ...places[0], id: 5, addedAt: "invalid" },
+    { ...places[2], id: 6 },
+  ];
+  assert.deepEqual(filterPlaces(dated, { sort: "recent" }).map(p => p.id), [3, 2, 1, 4, 5, 6]);
+  assert.deepEqual(filterPlaces(dated, { sort: "recent", city: "Paris" }).map(p => p.id), [2, 1, 4, 5]);
+  assert.deepEqual(dated.map(p => p.id), [1, 2, 3, 4, 5, 6]);
+  assert.equal(filterPlaces(dated, { sort: "recent" })[0].rank, 2);
+  assert.ok(toCSV(dated).includes('"added_at"'));
+  assert.ok(toCSV(dated).includes('"2026-09-21T00:00:00Z"'));
+});
 test("unsafe external links and absent coordinates are rejected", () => {
   assert.equal(safeURL("javascript:alert(1)"), "");
   assert.equal(safeURL("https://example.com"), "https://example.com/");

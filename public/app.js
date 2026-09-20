@@ -19,7 +19,7 @@ const state = {
   city: params.get("city") || "",
   cuisine: params.get("cuisine") || "",
   favorites: params.get("top") === "1",
-  sort: params.get("sort") === "name" ? "name" : "rank",
+  sort: ["name", "recent"].includes(params.get("sort")) ? params.get("sort") : "rank",
 };
 let places = [],
   filtered = [],
@@ -148,7 +148,7 @@ function saveQuery() {
   if (state.city) query.set("city", state.city);
   if (state.cuisine) query.set("cuisine", state.cuisine);
   if (state.favorites) query.set("top", "1");
-  if (state.sort === "name") query.set("sort", state.sort);
+  if (state.sort !== "rank") query.set("sort", state.sort);
   history.replaceState(
     null,
     "",
@@ -184,7 +184,12 @@ function render({ updateMap = true } = {}) {
           const closed =
             place.status === "CLOSED_PERMANENTLY" ||
             place.status === "CLOSED_TEMPORARILY";
-          return `<button class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" aria-pressed="${selectedId === place.id}"><span class="rank">${String(place.rank).padStart(2, "0")}</span><span class="place-info"><span class="place-name">${esc(place.name)}${place.rank <= 3 ? '<span class="top-star" aria-label="Top three">✳</span>' : ""}</span><span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2)].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span></span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only"> out of 10</span></span><span class="row-arrow" aria-hidden="true">↗</span></button>`;
+          const addedDate = Number.isFinite(Date.parse(place.addedAt))
+            ? "Added " + new Date(place.addedAt).toLocaleDateString("en-US", {
+                month: "short", day: "numeric", year: "numeric",
+              })
+            : "Added date unavailable";
+          return `<button class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" aria-pressed="${selectedId === place.id}"><span class="rank">${String(place.rank).padStart(2, "0")}</span><span class="place-info"><span class="place-name">${esc(place.name)}${place.rank <= 3 ? '<span class="top-star" aria-label="Top three">✳</span>' : ""}</span><span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2)].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span>${state.sort === "recent" ? `<span class="place-location">${esc(addedDate)}</span>` : ""}</span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only"> out of 10</span></span><span class="row-arrow" aria-hidden="true">↗</span></button>`;
         })
         .join("")
     : '<div class="empty-state"><span aria-hidden="true">∅</span><h2>No places at this table.</h2><p>Try another search or clear your filters.</p><button id="empty-reset">Show all restaurants</button></div>';

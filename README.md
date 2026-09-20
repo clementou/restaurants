@@ -89,6 +89,13 @@ scores can still have distinct underlying scores and ranks. The CSV retains the
 exact score and category rank. The download button exports the current filters;
 `restaurants.csv` is the full snapshot.
 
+Choose **Recently added** to show the newest additions to your Beli rankings
+first. This uses the ranking record's creation timestamp (`addedAt` in JSON,
+`added_at` in CSV), not a visit date, business creation date, or later re-ranking.
+Dates display in your browser's timezone. Places with unknown dates appear last;
+equal dates use rating order. Filters and shared `?sort=recent` URLs preserve
+this ordering, and weekly refreshes include the timestamps automatically.
+
 ## Access from an agent or script
 
 The full dataset is available without authentication or browser JavaScript:
@@ -99,7 +106,7 @@ The full dataset is available without authentication or browser JavaScript:
 JSON is recommended for programmatic use. It contains `updatedAt` (UTC export
 time), a `categories` code-to-label mapping, and the `places` array. Each place
 includes its Beli rating-record `id`, `businessId`, `category`, category `rank`,
-exact numeric `score`, name, location, cuisine array, and external links. `lat`
+exact numeric `score`, nullable `addedAt`, name, location, cuisine array, and external links. `lat`
 and `lng` are nullable. These are full snapshots, independent of UI filters;
 use `id` to match rating records across exports. The HTML advertises both files
 with alternate-format links and visible footer links.

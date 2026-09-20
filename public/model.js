@@ -11,6 +11,12 @@ export const fold = (value) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+const addedTime = (place) => {
+  const timestamp = Date.parse(place.addedAt);
+  return Number.isFinite(timestamp) ? timestamp : -Infinity;
+};
+const byRating = (a, b) => b.score - a.score || a.rank - b.rank;
+
 export function filterPlaces(
   places,
   {
@@ -45,7 +51,9 @@ export function filterPlaces(
     .sort(
       sort === "name"
         ? (a, b) => a.name.localeCompare(b.name) || a.rank - b.rank
-        : (a, b) => b.score - a.score || a.rank - b.rank,
+        : sort === "recent"
+          ? (a, b) => addedTime(b) - addedTime(a) || byRating(a, b)
+          : byRating,
     );
 }
 
@@ -99,6 +107,7 @@ export function toCSV(places) {
       "latitude",
       "longitude",
       "google_maps_url",
+      "added_at",
     ],
     ...places.map((p) => [
       categories[p.category],
@@ -111,6 +120,7 @@ export function toCSV(places) {
       p.lat,
       p.lng,
       mapsURL(p),
+      p.addedAt,
     ]),
   ]
     .map((row) => row.map(cell).join(","))

@@ -21,6 +21,19 @@ CATEGORIES = {"RES": "Restaurants", "COF": "Coffee & tea", "DES": "Dessert", "BA
 PUBLIC = Path(__file__).resolve().parent / "public"
 
 
+def added_at(value):
+    """Use the ranking record's creation time, never business or visit dates."""
+    if not isinstance(value, str):
+        return None
+    try:
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            return None
+        return timestamp.astimezone(timezone.utc).isoformat()
+    except ValueError:
+        return None
+
+
 def normalize(rows):
     """Publish an explicit allowlist, excluding identity, visit history and notes."""
     places = []
@@ -40,6 +53,7 @@ def normalize(rows):
         places.append({
             "id": row["id"], "businessId": business["id"], "category": row["category"],
             "name": business["name"], "score": score,
+            "addedAt": added_at(row.get("created_dt")),
             "city": business.get("city") or "", "country": business.get("country") or "",
             "neighborhood": business.get("neighborhood") or "",
             "cuisines": business.get("cuisines") or [],
@@ -113,10 +127,10 @@ def export(rows):
     temporary.replace(PUBLIC / "data.json")
     stream = io.StringIO()
     writer = csv.writer(stream)
-    writer.writerow(["category", "category_rank", "name", "rating", "city", "country", "cuisines", "latitude", "longitude", "google_maps_url"])
+    writer.writerow(["category", "category_rank", "name", "rating", "city", "country", "cuisines", "latitude", "longitude", "google_maps_url", "added_at"])
     for p in places:
         maps = "https://www.google.com/maps/search/?" + urlencode({"api": 1, "query": p["name"], "query_place_id": p["placeId"]})
-        writer.writerow([csv_cell(v) for v in [CATEGORIES[p["category"]], p["rank"], p["name"], p["score"], p["city"], p["country"], "; ".join(p["cuisines"]), p["lat"] if p["lat"] is not None else "", p["lng"] if p["lng"] is not None else "", maps]])
+        writer.writerow([csv_cell(v) for v in [CATEGORIES[p["category"]], p["rank"], p["name"], p["score"], p["city"], p["country"], "; ".join(p["cuisines"]), p["lat"] if p["lat"] is not None else "", p["lng"] if p["lng"] is not None else "", maps, p["addedAt"] or ""]])
     (PUBLIC / "restaurants.csv").write_text(stream.getvalue())
     print(f"Exported {len(places)} ranked restaurants to public/data.json and public/restaurants.csv.")
 
