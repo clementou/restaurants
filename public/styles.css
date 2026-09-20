@@ -346,12 +346,13 @@ select {
   min-width: 0;
 }
 .list-heading {
-  height: 52px;
+  min-height: 52px;
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 19px;
+  padding: 8px 19px;
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
 }
@@ -366,6 +367,23 @@ select {
   max-width: 130px;
   font-size: 10px;
   padding-right: 0;
+}
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+#sort-direction {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px;
+  min-height: 36px;
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 .places {
   overflow: auto;

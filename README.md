@@ -89,8 +89,11 @@ scores can still have distinct underlying scores and ranks. The CSV retains the
 exact score and category rank. The download button exports the current filters;
 `restaurants.csv` is the full snapshot.
 
-Choose **Recently added** to show the newest additions to your Beli rankings
-first. This uses the ranking record's creation timestamp (`addedAt` in JSON,
+Choose **Date added** to show the newest additions to your Beli rankings
+first. Use the direction button beside the sort dropdown to switch between
+newest/oldest, highest/lowest rating, or A–Z/Z–A. Shared URLs preserve direction
+with `direction=asc` or `direction=desc` when it differs from the default.
+Date sorting uses the ranking record's creation timestamp (`addedAt` in JSON,
 `added_at` in CSV), not a visit date, business creation date, or later re-ranking.
 Dates display in your browser's timezone. Places with unknown dates appear last;
 equal dates use rating order. Filters and shared `?sort=recent` URLs preserve

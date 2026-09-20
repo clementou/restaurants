@@ -16,6 +16,7 @@ const addedTime = (place) => {
   return Number.isFinite(timestamp) ? timestamp : -Infinity;
 };
 const byRating = (a, b) => b.score - a.score || a.rank - b.rank;
+export const defaultDirection = (sort) => sort === "name" ? "asc" : "desc";
 
 export function filterPlaces(
   places,
@@ -26,6 +27,7 @@ export function filterPlaces(
     cuisine = "",
     favorites = false,
     sort = "rank",
+    direction = defaultDirection(sort),
   },
 ) {
   const words = fold(query.trim()).split(/\s+/).filter(Boolean);
@@ -48,13 +50,21 @@ export function filterPlaces(
         words.every((word) => text.includes(word))
       );
     })
-    .sort(
-      sort === "name"
-        ? (a, b) => a.name.localeCompare(b.name) || a.rank - b.rank
-        : sort === "recent"
-          ? (a, b) => addedTime(b) - addedTime(a) || byRating(a, b)
-          : byRating,
-    );
+    .sort((a, b) => {
+      const multiplier = direction === "asc" ? 1 : -1;
+      if (sort === "name")
+        return multiplier * a.name.localeCompare(b.name) || a.rank - b.rank;
+      if (sort === "recent") {
+        const aTime = addedTime(a), bTime = addedTime(b);
+        if (aTime !== bTime) {
+          if (aTime === -Infinity) return 1;
+          if (bTime === -Infinity) return -1;
+          return multiplier * (aTime - bTime);
+        }
+        return byRating(a, b);
+      }
+      return multiplier * (a.score - b.score) || a.rank - b.rank;
+    });
 }
 
 export const hasCoordinates = (p) =>

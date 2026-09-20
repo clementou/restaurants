@@ -82,11 +82,19 @@ test("recent sort uses creation times across categories and keeps unknown dates 
     { ...places[2], id: 6 },
   ];
   assert.deepEqual(filterPlaces(dated, { sort: "recent" }).map(p => p.id), [3, 2, 1, 4, 5, 6]);
+  assert.deepEqual(filterPlaces(dated, { sort: "recent", direction: "asc" }).map(p => p.id), [1, 2, 3, 4, 5, 6]);
   assert.deepEqual(filterPlaces(dated, { sort: "recent", city: "Paris" }).map(p => p.id), [2, 1, 4, 5]);
   assert.deepEqual(dated.map(p => p.id), [1, 2, 3, 4, 5, 6]);
   assert.equal(filterPlaces(dated, { sort: "recent" })[0].rank, 2);
   assert.ok(toCSV(dated).includes('"added_at"'));
   assert.ok(toCSV(dated).includes('"2026-09-21T00:00:00Z"'));
+});
+test("rating and name can sort in either direction without changing category ranks", () => {
+  assert.deepEqual(filterPlaces(places, { direction: "asc" }).map(p => p.id), [3, 1, 2]);
+  assert.deepEqual(filterPlaces(places, { direction: "desc" }).map(p => p.id), [2, 1, 3]);
+  assert.deepEqual(filterPlaces(places, { sort: "name", direction: "asc" }).map(p => p.id), [3, 1, 2]);
+  assert.deepEqual(filterPlaces(places, { sort: "name", direction: "desc" }).map(p => p.id), [2, 1, 3]);
+  assert.equal(filterPlaces(places, { direction: "asc", category: "RES" })[0].rank, 2);
 });
 test("unsafe external links and absent coordinates are rejected", () => {
   assert.equal(safeURL("javascript:alert(1)"), "");

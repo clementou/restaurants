@@ -120,14 +120,16 @@
             <div class="list-heading">
               <span id="result-count" role="status" aria-live="polite"
                 >Loading places…</span
-              ><label
+              ><div class="sort-controls"><label
                 ><span class="sr-only">Sort restaurants</span
                 ><select id="sort">
-                  <option value="rank">My rating ↓</option>
-                  <option value="recent">Recently added</option>
-                  <option value="name">Name A–Z</option>
+                  <option value="rank">My rating</option>
+                  <option value="recent">Date added</option>
+                  <option value="name">Name</option>
                 </select></label
               >
+                <button id="sort-direction" type="button" aria-label="Highest first. Switch to ascending order">Highest first ↓</button>
+              </div>
             </div>
             <div id="places" class="places" tabindex="-1">
               <div class="loading-state">Setting the table…</div>

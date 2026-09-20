@@ -2,6 +2,7 @@ import { cartoKey } from "./map-config.js";
 import {
   categories,
   filterPlaces,
+  defaultDirection,
   hasCoordinates,
   tier,
   rating,
@@ -21,6 +22,8 @@ const state = {
   favorites: params.get("top") === "1",
   sort: ["name", "recent"].includes(params.get("sort")) ? params.get("sort") : "rank",
 };
+state.direction = ["asc", "desc"].includes(params.get("direction"))
+  ? params.get("direction") : defaultDirection(state.sort);
 let places = [],
   filtered = [],
   map,
@@ -149,6 +152,7 @@ function saveQuery() {
   if (state.cuisine) query.set("cuisine", state.cuisine);
   if (state.favorites) query.set("top", "1");
   if (state.sort !== "rank") query.set("sort", state.sort);
+  if (state.direction !== defaultDirection(state.sort)) query.set("direction", state.direction);
   history.replaceState(
     null,
     "",
@@ -166,6 +170,14 @@ function render({ updateMap = true } = {}) {
   $("#city").value = state.city;
   $("#cuisine").value = state.cuisine;
   $("#sort").value = state.sort;
+  const ascending = state.direction === "asc";
+  const directionLabel = state.sort === "recent"
+    ? (ascending ? "Oldest first" : "Newest first")
+    : state.sort === "name"
+      ? (ascending ? "A–Z" : "Z–A")
+      : (ascending ? "Lowest first" : "Highest first");
+  $("#sort-direction").textContent = `${directionLabel} ${ascending ? "↑" : "↓"}`;
+  $("#sort-direction").setAttribute("aria-label", `${directionLabel}. Switch to ${ascending ? "descending" : "ascending"} order`);
   document
     .querySelectorAll(".city-chip")
     .forEach((button) =>
@@ -207,6 +219,7 @@ function reset() {
     cuisine: "",
     favorites: false,
     sort: "rank",
+    direction: "desc",
   });
   selectedId = null;
   render();
@@ -303,6 +316,11 @@ async function init() {
   });
   $("#sort").addEventListener("change", (event) => {
     state.sort = event.target.value;
+    state.direction = defaultDirection(state.sort);
+    render({ updateMap: false });
+  });
+  $("#sort-direction").addEventListener("click", () => {
+    state.direction = state.direction === "asc" ? "desc" : "asc";
     render({ updateMap: false });
   });
   $("#favorites").addEventListener("click", () => {
