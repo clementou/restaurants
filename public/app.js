@@ -176,7 +176,8 @@ function render({ updateMap = true } = {}) {
     : state.sort === "name"
       ? (ascending ? "A–Z" : "Z–A")
       : (ascending ? "Lowest first" : "Highest first");
-  $("#sort-direction").textContent = `${directionLabel} ${ascending ? "↑" : "↓"}`;
+  $("#sort-direction").dataset.direction = state.direction;
+  $("#sort-direction").title = directionLabel;
   $("#sort-direction").setAttribute("aria-label", `${directionLabel}. Switch to ${ascending ? "descending" : "ascending"} order`);
   document
     .querySelectorAll(".city-chip")

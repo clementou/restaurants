@@ -375,15 +375,25 @@ select {
   margin-left: auto;
 }
 #sort-direction {
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 8px;
-  min-height: 36px;
-  font-size: 10px;
-  white-space: nowrap;
+  padding: 0;
+  width: 32px;
+  height: 36px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
+}
+#sort-direction svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#sort-direction[data-direction="asc"] svg {
+  transform: rotate(180deg);
 }
 .places {
   overflow: auto;
