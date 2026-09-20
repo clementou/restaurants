@@ -1,0 +1,75 @@
+name: Refresh Google Maps
+
+on:
+  schedule:
+    - cron: '37 15 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+# Serialize with Beli refreshes so each deployment includes the latest snapshots.
+concurrency:
+  group: refresh-beli
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main' && vars.GOOGLE_TAKEOUT_PROVIDER != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install dependencies and verify code
+        run: |
+          npm ci
+          npm install --global netlify-cli@27.1.1
+          npm test
+      - name: Read-only Drive authentication
+        id: google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_TAKEOUT_PROVIDER }}
+          service_account: takeout-reader@clementou-restaurants.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Import newest Want to go export
+        env:
+          GOOGLE_DRIVE_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: python3 sync_google_maps.py --folder 1uX-i3Bnup2c59RLdOtePThl7W3KGUdeyFDJugXsGa8Z3UQeXNs-KDE2-AXF8ro-2o8XWEvcJ
+      - name: Check for new data
+        id: changes
+        run: |
+          if ! git diff --quiet -- public/google-maps.json; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build updated site
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          CARTO_BASEMAP_API_KEY: ${{ secrets.CARTO_BASEMAP_API_KEY }}
+        run: npm run build
+      - name: Save public snapshot
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/google-maps.json
+          git commit -m 'Refresh Google Maps Want to go snapshot'
+          git push origin HEAD:main
+      - name: Deploy to Netlify
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: netlify deploy --prod --no-build --dir dist --site 03425c78-ea4e-4d28-8ad4-b071f896ac47

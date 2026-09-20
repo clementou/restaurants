@@ -2,6 +2,8 @@ import { cartoKey } from "./map-config.js";
 import {
   categories,
   filterPlaces,
+  mergeCollections,
+  isRated,
   defaultDirection,
   hasCoordinates,
   tier,
@@ -20,6 +22,7 @@ const state = {
   city: params.get("city") || "",
   cuisine: params.get("cuisine") || "",
   favorites: params.get("top") === "1",
+  collection: ["all", "want"].includes(params.get("collection")) ? params.get("collection") : "ranked",
   sort: ["name", "recent"].includes(params.get("sort")) ? params.get("sort") : "rank",
 };
 state.direction = ["asc", "desc"].includes(params.get("direction"))
@@ -79,18 +82,19 @@ function popupContent(place) {
   const website = safeURL(place.website),
     beli = safeURL(place.beliUrl);
   node.className = "place-popup";
-  node.innerHTML = `<div class="popup-eyebrow">#${place.rank} · ${esc(categories[place.category]).toUpperCase()} <span class="score ${tier(place)}">${rating(place)}</span></div><h2>${esc(place.name)}</h2><p>${esc([place.neighborhood, place.city, place.country].filter(Boolean).join(" · "))}</p><p>${esc(place.cuisines.join(" · "))}</p><div class="popup-links"><a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>${beli ? `<a href="${esc(beli)}" target="_blank" rel="noopener noreferrer">Beli ↗</a>` : ""}${website ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website ↗</a>` : ""}</div>`;
+  node.innerHTML = `<div class="popup-eyebrow">${isRated(place) ? `#${place.rank} · ${esc(categories[place.category]).toUpperCase()}` : "WANT TO GO"} <span class="score ${tier(place)}">${rating(place)}</span></div><h2>${esc(place.name)}</h2><p>${esc([place.neighborhood, place.city, place.country].filter(Boolean).join(" · "))}</p><p>${esc(place.cuisines.join(" · "))}</p><div class="popup-links"><a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>${beli ? `<a href="${esc(beli)}" target="_blank" rel="noopener noreferrer">Beli ↗</a>` : ""}${website ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website ↗</a>` : ""}</div>`;
   return node;
 }
 
 function selectPlace(id, fromMap = false) {
-  const place = places.find((p) => p.id === id);
+  const place = places.find((p) => String(p.id) === String(id));
   if (!place) return;
+  id = place.id;
   selectedId = id;
   document.querySelectorAll(".place-row").forEach((row) => {
-    const active = Number(row.dataset.id) === id;
+    const active = row.dataset.id === String(id);
     row.classList.toggle("selected", active);
-    row.setAttribute("aria-pressed", String(active));
+    if (row.tagName === "BUTTON") row.setAttribute("aria-pressed", String(active));
   });
   if (fromMap) {
     const row = $(`.place-row[data-id="${id}"]`);
@@ -147,6 +151,7 @@ function renderMap() {
 function saveQuery() {
   const query = new URLSearchParams();
   if (state.query) query.set("q", state.query);
+  if (state.collection !== "ranked") query.set("collection", state.collection);
   if (state.category) query.set("category", state.category);
   if (state.city) query.set("city", state.city);
   if (state.cuisine) query.set("cuisine", state.cuisine);
@@ -170,6 +175,11 @@ function render({ updateMap = true } = {}) {
   $("#city").value = state.city;
   $("#cuisine").value = state.cuisine;
   $("#sort").value = state.sort;
+  $("#collection").value = state.collection;
+  const unpinned = filtered.filter(p => !hasCoordinates(p)).length;
+  $("#collection-note").textContent = unpinned
+    ? `${unpinned.toLocaleString()} places have no map location yet. Use their Google Maps links to view them.` : "";
+  $("#collection-note").hidden = !unpinned;
   const ascending = state.direction === "asc";
   const directionLabel = state.sort === "recent"
     ? (ascending ? "Oldest first" : "Newest first")
@@ -202,7 +212,7 @@ function render({ updateMap = true } = {}) {
                 month: "short", day: "numeric", year: "numeric",
               })
             : "Added date unavailable";
-          return `<button class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" aria-pressed="${selectedId === place.id}"><span class="rank">${String(place.rank).padStart(2, "0")}</span><span class="place-info"><span class="place-name">${esc(place.name)}${place.rank <= 3 ? '<span class="top-star" aria-label="Top three">✳</span>' : ""}</span><span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2)].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span>${state.sort === "recent" ? `<span class="place-location">${esc(addedDate)}</span>` : ""}</span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only"> out of 10</span></span><span class="row-arrow" aria-hidden="true">↗</span></button>`;
+          return `<${!hasCoordinates(place) ? `a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer"` : "button"} class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" ${hasCoordinates(place) ? `aria-pressed="${selectedId === place.id}"` : ""}><span class="rank">${isRated(place) ? String(place.rank).padStart(2, "0") : ""}</span><span class="place-info"><span class="place-name">${esc(place.name)}${isRated(place) && place.rank <= 3 ? '<span class="top-star" aria-label="Top three">✳</span>' : ""}</span><span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2), ...(place.wantToGo ? ["Want to go"] : [])].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span>${state.sort === "recent" ? `<span class="place-location">${esc(addedDate)}</span>` : ""}</span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only">${isRated(place) ? " out of 10" : "Want to go, not rated"}</span></span><span class="row-arrow" aria-hidden="true">↗</span></${!hasCoordinates(place) ? "a" : "button"}>`;
         })
         .join("")
     : '<div class="empty-state"><span aria-hidden="true">∅</span><h2>No places at this table.</h2><p>Try another search or clear your filters.</p><button id="empty-reset">Show all restaurants</button></div>';
@@ -219,6 +229,7 @@ function reset() {
     city: "",
     cuisine: "",
     favorites: false,
+    collection: "ranked",
     sort: "rank",
     direction: "desc",
   });
@@ -242,7 +253,10 @@ async function init() {
   const response = await fetch(new URL("./data.json", import.meta.url));
   if (!response.ok) throw new Error("Could not load restaurant data");
   const data = await response.json();
-  places = data.places;
+  const savedResponse = await fetch(new URL("./google-maps.json", import.meta.url));
+  if (!savedResponse.ok) throw new Error("Could not load saved places");
+  const saved = await savedResponse.json();
+  places = mergeCollections(data.places, saved.places);
   $("#total").textContent = places.length.toLocaleString();
   $("#countries").textContent = new Set(
     places.map((p) => p.country).filter(Boolean),
@@ -303,6 +317,16 @@ async function init() {
     state.query = event.target.value;
     render();
   });
+  $("#collection").addEventListener("change", (event) => {
+    state.collection = event.target.value;
+    state.category = "";
+    state.city = "";
+    state.cuisine = "";
+    state.favorites = false;
+    state.sort = state.collection === "want" ? "name" : "rank";
+    state.direction = defaultDirection(state.sort);
+    render();
+  });
   $("#category").addEventListener("change", (event) => {
     state.category = event.target.value;
     render();
@@ -332,7 +356,7 @@ async function init() {
   $("#fit-map").addEventListener("click", fitMap);
   $("#places").addEventListener("click", (event) => {
     const row = event.target.closest("[data-id]");
-    if (row) selectPlace(Number(row.dataset.id));
+    if (row?.tagName === "BUTTON") selectPlace(row.dataset.id);
   });
   $("#quick-cities").addEventListener("click", (event) => {
     const button = event.target.closest("[data-city]");

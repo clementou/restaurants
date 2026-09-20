@@ -5,6 +5,8 @@ import {
   toCSV,
   safeURL,
   hasCoordinates,
+  mergeCollections,
+  rating,
 } from "../public/model.js";
 
 const places = [
@@ -65,6 +67,21 @@ test("combined filters preserve category ranks and use actual scores across cate
   );
   assert.equal(filterPlaces(places, { query: "not found" }).length, 0);
   assert.equal(filterPlaces(places, { city: "Lyon" })[0].rank, 2);
+});
+test("saved collections merge by Google identity and unrated places sort last in both directions", () => {
+  const placeId = btoa(String.fromCharCode(10, 18, 9, ...Array(9).fill(0), 188, 10, ...Array(6).fill(0)));
+  const saved = [{ ...places[0], id: "google-abc", googleCid: "abc", wantToGo: true, score: null, rank: null, googleMapsUrl: "https://www.google.com/maps/place/Test" },
+    { ...places[1], id: "google-def", googleCid: "def", wantToGo: true, score: null, rank: null }];
+  const merged = mergeCollections([{ ...places[0], placeId }, places[2]], saved);
+  assert.equal(merged.length, 3);
+  assert.equal(merged[0].wantToGo, true);
+  assert.equal(merged[0].score, 9.8);
+  assert.equal(filterPlaces(merged, { collection: "want" }).length, 2);
+  assert.equal(filterPlaces(merged, { collection: "ranked" }).length, 2);
+  for (const direction of ["asc", "desc"]) {
+    assert.equal(filterPlaces(merged, { direction }).at(-1).id, "google-def");
+  }
+  assert.equal(rating(saved[0]), "♡");
 });
 test("CSV escapes quotes, commas and spreadsheet formulas", () => {
   const csv = toCSV([...places, { ...places[0], name: "=1+2" }]);

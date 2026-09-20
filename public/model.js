@@ -4,6 +4,7 @@ export const categories = {
   DES: "Dessert",
   BAR: "Bars",
   BAK: "Bakeries",
+  OTHER: "Saved places",
 };
 export const fold = (value) =>
   value
@@ -16,6 +17,28 @@ const addedTime = (place) => {
   return Number.isFinite(timestamp) ? timestamp : -Infinity;
 };
 const byRating = (a, b) => b.score - a.score || a.rank - b.rank;
+export const isRated = (place) => Number.isFinite(place.score);
+
+// Google's standard place IDs encode the feature CID in their last eight bytes.
+// Match only those IDs; never collapse businesses just because names agree.
+const placeCid = (placeId) => {
+  try {
+    const bytes = atob(placeId.replaceAll("-", "+").replaceAll("_", "/"));
+    if (bytes.length !== 20 || !placeId.startsWith("ChIJ")) return "";
+    return [...bytes.slice(-8)].reverse().map(c => c.charCodeAt(0).toString(16).padStart(2, "0")).join("").replace(/^0+/, "");
+  } catch { return ""; }
+};
+export function mergeCollections(ranked, saved) {
+  const byCid = new Map(saved.filter(p => p.googleCid).map(p => [p.googleCid, p]));
+  const matched = new Set();
+  const merged = ranked.map(p => {
+    const match = byCid.get(placeCid(p.placeId || ""));
+    if (!match) return p;
+    matched.add(match.id);
+    return { ...p, wantToGo: true, googleMapsUrl: match.googleMapsUrl };
+  });
+  return [...merged, ...saved.filter(p => !matched.has(p.id))];
+}
 export const defaultDirection = (sort) => sort === "name" ? "asc" : "desc";
 
 export function filterPlaces(
@@ -26,6 +49,7 @@ export function filterPlaces(
     city = "",
     cuisine = "",
     favorites = false,
+    collection = "all",
     sort = "rank",
     direction = defaultDirection(sort),
   },
@@ -43,6 +67,8 @@ export function filterPlaces(
         ].join(" "),
       );
       return (
+        (collection !== "ranked" || isRated(place)) &&
+        (collection !== "want" || place.wantToGo) &&
         (!category || place.category === category) &&
         (!city || place.city === city) &&
         (!cuisine || place.cuisines.includes(cuisine)) &&
@@ -63,6 +89,8 @@ export function filterPlaces(
         }
         return byRating(a, b);
       }
+      if (isRated(a) !== isRated(b)) return isRated(a) ? -1 : 1;
+      if (!isRated(a)) return a.name.localeCompare(b.name);
       return multiplier * (a.score - b.score) || a.rank - b.rank;
     });
 }
@@ -73,8 +101,8 @@ export const hasCoordinates = (p) =>
   Math.abs(p.lat) <= 90 &&
   Math.abs(p.lng) <= 180;
 export const tier = (p) =>
-  p.score >= 9 ? "exceptional" : p.score >= 7 ? "great" : "other";
-export const rating = (p) => p.score.toFixed(1);
+  !isRated(p) ? "unrated" : p.score >= 9 ? "exceptional" : p.score >= 7 ? "great" : "other";
+export const rating = (p) => isRated(p) ? p.score.toFixed(1) : "♡";
 export const escapeHTML = (value) =>
   String(value).replace(
     /[&<>"']/g,
@@ -84,7 +112,7 @@ export const escapeHTML = (value) =>
       ],
   );
 export const mapsURL = (p) =>
-  "https://www.google.com/maps/search/?" +
+  safeURL(p.googleMapsUrl) || "https://www.google.com/maps/search/?" +
   new URLSearchParams({
     api: "1",
     query: `${p.name} ${p.city}`,
@@ -118,6 +146,7 @@ export function toCSV(places) {
       "longitude",
       "google_maps_url",
       "added_at",
+      "want_to_go",
     ],
     ...places.map((p) => [
       categories[p.category],
@@ -131,6 +160,7 @@ export function toCSV(places) {
       p.lng,
       mapsURL(p),
       p.addedAt,
+      p.wantToGo ? "yes" : "",
     ]),
   ]
     .map((row) => row.map(cell).join(","))

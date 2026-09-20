@@ -125,12 +125,36 @@ destination folder with this account as **Viewer**. The owner's Google account
 can impersonate this service account for short-lived access without a private
 key. No project-wide data roles were granted to the service account.
 
-For “Want to go,” select **Saved** in Google Takeout. **Maps** and **Maps (your
-places)** are different exports; the latter describes its saved-place data as
-starred places. The current shared export contains those Maps products, so the
-Want to go import is waiting for a Saved export. Automatic Drive imports are
-not yet configured. Raw downloads belong in the gitignored `.takeout/` folder,
-outside the published `public/` directory.
+The **Want to go** collection is imported into `public/google-maps.json` and
+merged with Beli in the browser. Matching Google feature IDs combine the two
+entries and keep Beli's ratings and coordinates. Unknown places retain their
+original Maps links without guessed ratings, dates, categories, or coordinates.
+They are searchable and open in Google Maps; the page shows how many cannot yet
+be pinned on the map. Notes, comments, tags, and other saved lists are excluded.
+The Beli JSON/CSV snapshots remain independent, and browser CSV downloads include
+the selected collection. Beli refreshes do not overwrite the Maps snapshot.
+
+For “Want to go,” select **Saved** in Google Takeout and export into the shared
+folder. Refresh locally using your authenticated personal gcloud account:
+
+```sh
+python3 sync_google_maps.py --folder 1uX-i3Bnup2c59RLdOtePThl7W3KGUdeyFDJugXsGa8Z3UQeXNs-KDE2-AXF8ro-2o8XWEvcJ
+```
+
+The importer lists only that folder, reads the newest archive containing
+`Saved/Want to go.csv`, and preserves the current snapshot on invalid or empty
+exports. ZIP and TGZ archives up to 20 MiB are supported; larger unrelated
+archives are skipped. Raw downloads belong in gitignored `.takeout/`, outside
+`public/`. An export with no changes does not rewrite the snapshot.
+
+The `Refresh Google Maps` workflow is prepared to check weekly for new exports
+and deploy only changed data. **It is disabled until recurring access is approved
+and the repository variable `GOOGLE_TAKEOUT_PROVIDER` is configured.** The planned
+Workload Identity provider allows only repository ID `1369517619`, owner ID
+`12637289`, on `refs/heads/main` to impersonate the reader service account. It
+uses short-lived tokens with the Drive read-only scope, not a private key.
+The Google and Beli workflows share a concurrency group to prevent overlapping
+deployments. Renew your Takeout export schedule when its one-year period ends.
 
 The login script saves access/refresh tokens in `.beli-tokens.json` with mode
 `0600`. It never saves the password. Token files, `.env` files, and Netlify state

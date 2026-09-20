@@ -403,6 +403,22 @@ select {
   position: relative;
   min-height: 0;
 }
+.collection-note {
+  margin: 0;
+  padding: 10px 19px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+a.place-row {
+  text-decoration: none;
+  color: inherit;
+}
+.score.unrated {
+  background: transparent;
+  color: var(--muted);
+}
 .place-row {
   display: flex;
   align-items: center;
