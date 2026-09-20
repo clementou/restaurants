@@ -9,7 +9,7 @@ category/city/cuisine filters, search, and CSV export.
 
 ## Run locally
 
-Requires Node.js 22+, npm, and Python 3. No Python dependencies.
+Use Node.js 24 LTS (`nvm use` reads `.nvmrc`), npm, and Python 3. No Python dependencies.
 Set `CARTO_BASEMAP_API_KEY=your-key` in a local `.env` file before building.
 
 ```sh
@@ -44,6 +44,11 @@ visitors' browsers. The `Refresh Beli` GitHub Actions workflow refreshes it week
 on Sundays at 15:17 UTC (08:17 PDT / 07:17 PST). You can also run it from the
 repository's Actions tab using **Run workflow**. Scheduled runs can be delayed
 by GitHub; this is not an exact-time guarantee.
+
+GitHub Actions and Netlify builds use Node.js 24 from `.nvmrc`. The workflow
+uses Ubuntu 24.04 and actions pinned to verified release commits; Dependabot
+checks monthly for action updates. The site itself is static HTML, CSS, and
+browser JavaScript, with no Node.js or Bun server runtime.
 
 The workflow tests the code, refreshes all categories, builds, commits the public
 snapshot, and deploys directly to the existing Netlify site. A failed sync or
