@@ -1,0 +1,72 @@
+name: Refresh Beli
+
+on:
+  schedule:
+    # Sunday, 08:17 PDT / 07:17 PST. GitHub schedules use UTC.
+    - cron: '17 15 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-beli
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NETLIFY_SITE_ID: 03425c78-ea4e-4d28-8ad4-b071f896ac47
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      CARTO_BASEMAP_API_KEY: ${{ secrets.CARTO_BASEMAP_API_KEY }}
+      BELI_TOKEN_PATH: ${{ runner.temp }}/beli-tokens.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check configuration
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo 'Missing NETLIFY_AUTH_TOKEN secret'; exit 1; }
+          test -n "$CARTO_BASEMAP_API_KEY" || { echo 'Missing CARTO_BASEMAP_API_KEY secret'; exit 1; }
+      - name: Install dependencies and verify code
+        run: |
+          npm ci
+          npm install --global netlify-cli@27.1.1
+          npm test
+      - name: Restore private Beli session
+        id: restore
+        run: |
+          umask 077
+          netlify blobs:get beli-sync tokens --output "$BELI_TOKEN_PATH"
+          test -s "$BELI_TOKEN_PATH"
+      - name: Refresh Beli data
+        run: python3 sync_beli.py --tokens "$BELI_TOKEN_PATH"
+      # Refreshing the session can rotate the token even if fetching places fails.
+      # Persist it before any build/deploy and also on a failed sync.
+      - name: Persist private Beli session
+        if: always() && steps.restore.outcome == 'success'
+        run: netlify blobs:set beli-sync tokens --input "$BELI_TOKEN_PATH" --force
+      - name: Build updated site
+        run: npm run build
+      - name: Save public snapshot
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data.json public/restaurants.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh Beli snapshot'
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
+      - name: Deploy to Netlify
+        run: netlify deploy --prod --no-build --dir dist --site "$NETLIFY_SITE_ID"
+      - name: Remove local session
+        if: always()
+        run: rm -f "$BELI_TOKEN_PATH"

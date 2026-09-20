@@ -40,8 +40,43 @@ npm run deploy
 and push to GitHub to retain the snapshot in source control.
 
 The site displays a snapshot with its export date; it does not poll Beli from
-visitors' browsers. No unattended refresh schedule is installed. Run the sync and
-deploy commands whenever you want to publish an update.
+visitors' browsers. The `Refresh Beli` GitHub Actions workflow refreshes it weekly
+on Sundays at 15:17 UTC (08:17 PDT / 07:17 PST). You can also run it from the
+repository's Actions tab using **Run workflow**. Scheduled runs can be delayed
+by GitHub; this is not an exact-time guarantee.
+
+The workflow tests the code, refreshes all categories, builds, commits the public
+snapshot, and deploys directly to the existing Netlify site. A failed sync or
+build does not deploy. Overlapping refresh runs are serialized. Check the Actions
+tab and GitHub's workflow notification settings for failures. GitHub may disable
+scheduled workflows in public repositories after 60 days without activity;
+successful weekly snapshot commits keep this repository active.
+
+### Weekly refresh credentials
+
+The workflow requires two GitHub Actions repository secrets:
+
+- `NETLIFY_AUTH_TOKEN`: a Netlify token authorized for this site and its Blobs.
+- `CARTO_BASEMAP_API_KEY`: the same map key used by local builds.
+
+Beli tokens live in the site's private Netlify Blobs store `beli-sync`, key
+`tokens`. They are never committed or uploaded as workflow artifacts, and no
+public endpoint exposes the store. Each run restores them into a temporary file
+and persists the refreshed session even when fetching places subsequently fails.
+No Beli password is stored. Avoid running a local refresh at the same time as the
+workflow, since both may rotate the same session.
+
+To seed the session, or recover after Beli rejects/invalidates it, log in locally
+and replace the stored session using the authenticated Netlify CLI:
+
+```sh
+python3 beli_token.py
+netlify blobs:set beli-sync tokens --input .beli-tokens.json --force
+```
+
+Then run **Refresh Beli** from GitHub Actions. The workflow must be on the default
+branch for its weekly schedule to run. Beli's unofficial API can change; a failed
+run may require a new login or a script update.
 
 Beli ranks are calculated **within each category**. The combined view sorts by
 the exact Beli score, displaying scores to one decimal place. Equal displayed
@@ -77,7 +112,9 @@ identity, visit dates, notes, and raw API responses are not published.
 Authentication is an unofficial API flow observed in the published Beli Maps
 extension v0.1.6: phone number + password to `/api/token/`, refresh token to
 `/api/token/refresh/`. It can change. A rejected refresh requires a new login;
-tokens are never sent to GitHub or Netlify by these scripts.
+the local scripts do not upload tokens. The weekly workflow explicitly stores
+the session in private Netlify Blobs and accesses it from the GitHub Actions
+runner; credentials are never part of the published website.
 
 ## Deploy and route
 

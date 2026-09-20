@@ -1,5 +1,10 @@
 import unittest
-from sync_beli import normalize
+import base64
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+from sync_beli import fetch_ranking, normalize
 
 
 def row(identifier, category, score):
@@ -9,6 +14,19 @@ def row(identifier, category, score):
 
 
 class ExportTests(unittest.TestCase):
+    def test_rotated_session_survives_failed_fetch(self):
+        claims = base64.urlsafe_b64encode(b'{"user_id": "test"}').decode().rstrip("=")
+        refreshed = {"access": f"header.{claims}.signature", "refresh": "new-session"}
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "tokens.json"
+            path.write_text(json.dumps({"refresh": "old-session"}))
+            with patch("sync_beli.request_tokens", return_value=refreshed), \
+                 patch("sync_beli.fetch_category", side_effect=RuntimeError("offline")):
+                with self.assertRaises(RuntimeError):
+                    fetch_ranking(path)
+            self.assertEqual(json.loads(path.read_text()), refreshed)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
     def test_category_ranks_and_private_fields(self):
         places = normalize([row(1, "RES", 8), row(2, "COF", 10), row(3, "RES", 9)])
         self.assertEqual([(p["id"], p["rank"]) for p in places], [(2, 1), (3, 1), (1, 2)])
