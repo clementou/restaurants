@@ -1,4 +1,5 @@
 import { cp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 try {
   process.loadEnvFile(".env");
@@ -17,6 +18,25 @@ await writeFile(
   "dist/map-config.js",
   `export const cartoKey = ${JSON.stringify(cartoKey)};\n`,
 );
+// The custom domain caches JS/CSS for four hours. Version the full module graph
+// so fresh HTML never combines a new control with an older sorting module.
+async function versionAsset(filename, contents) {
+  const hash = createHash("sha256").update(contents).digest("hex").slice(0, 12);
+  const versioned = filename.replace(/(\.[^.]+)$/, `.${hash}$1`);
+  await writeFile(`dist/${versioned}`, contents);
+  return versioned;
+}
+const modelFile = await versionAsset("model.js", await readFile("dist/model.js", "utf8"));
+const configFile = await versionAsset("map-config.js", await readFile("dist/map-config.js", "utf8"));
+const app = (await readFile("dist/app.js", "utf8"))
+  .replace('"./model.js"', `"./${modelFile}"`)
+  .replace('"./map-config.js"', `"./${configFile}"`);
+const appFile = await versionAsset("app.js", app);
+const stylesFile = await versionAsset("styles.css", await readFile("dist/styles.css", "utf8"));
+const html = (await readFile("dist/index.html", "utf8"))
+  .replace('"./app.js"', `"./${appFile}"`)
+  .replace('"./styles.css"', `"./${stylesFile}"`);
+await writeFile("dist/index.html", html);
 await mkdir("dist/vendor", { recursive: true });
 for (const [source, target] of [
   ["leaflet/dist/leaflet.js", "leaflet.js"],

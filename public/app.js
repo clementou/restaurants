@@ -385,6 +385,8 @@ async function init() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   window.addEventListener("resize", () => map?.invalidateSize());
+  $("#sort").disabled = false;
+  $("#sort-direction").disabled = false;
 }
 
 init().catch(() => {

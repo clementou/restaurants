@@ -25,6 +25,8 @@ The build reads `CARTO_BASEMAP_API_KEY` from `.env` locally or the Netlify build
 environment and generates `dist/map-config.js`. The key is not committed to Git,
 but is visible to browsers when they request tiles, as required by CARTO's client
 integration. Restrict it to the site's domains in the CARTO dashboard.
+Builds fingerprint the app, its JavaScript imports, and CSS so browser/CDN caches
+cannot mix new controls with old sorting logic after a deployment.
 
 ## Refresh your Beli data
 
@@ -147,9 +149,10 @@ exports. ZIP and TGZ archives up to 20 MiB are supported; larger unrelated
 archives are skipped. Raw downloads belong in gitignored `.takeout/`, outside
 `public/`. An export with no changes does not rewrite the snapshot.
 
-The `Refresh Google Maps` workflow is prepared to check weekly for new exports
-and deploy only changed data. **It is disabled until recurring access is approved
-and the repository variable `GOOGLE_TAKEOUT_PROVIDER` is configured.** The planned
+The `Refresh Google Maps` workflow checks for new exports on the **20th of each
+month at 5 p.m. America/Los_Angeles**, automatically following daylight saving
+time, and deploys only changed data. GitHub may delay scheduled runs. Recurring
+access is enabled through the `GOOGLE_TAKEOUT_PROVIDER` repository variable. The
 Workload Identity provider allows only repository ID `1369517619`, owner ID
 `12637289`, on `refs/heads/main` to impersonate the reader service account. It
 uses short-lived tokens with the Drive read-only scope, not a private key.

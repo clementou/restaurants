@@ -392,6 +392,10 @@ select {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+#sort-direction:disabled {
+  opacity: 0.35;
+  cursor: wait;
+}
 #sort-direction[data-direction="asc"] svg {
   transform: rotate(180deg);
 }
