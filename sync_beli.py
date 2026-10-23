@@ -5,20 +5,83 @@ import argparse
 import base64
 import csv
 from datetime import datetime, timezone
+import getpass
 import io
 import json
 import math
+import os
 from pathlib import Path
+import re
 import sys
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit
-from urllib.request import Request, build_opener
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from beli_token import DEFAULT_OUTPUT, NoRedirects, request_tokens, save_tokens
-
+AUTH_API = "https://backoffice-service-onboarding-t57o3dxfca-nn.a.run.app"
 API = "https://backoffice-service-t57o3dxfca-nn.a.run.app"
 CATEGORIES = {"RES": "Restaurants", "COF": "Coffee & tea", "DES": "Dessert", "BAR": "Bars", "BAK": "Bakeries"}
 PUBLIC = Path(__file__).resolve().parent / "public"
+
+
+class LoginError(RuntimeError):
+    """A safe authentication error that never includes credentials or responses."""
+
+
+class NoRedirects(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def credentials():
+    phone = os.environ.get("BELI_PHONE", "")
+    password = os.environ.get("BELI_PASSWORD", "")
+    if not phone or not password:
+        if not sys.stdin.isatty():
+            raise LoginError("Set both BELI_PHONE and BELI_PASSWORD in GitHub Actions Secrets or your environment.")
+        phone = phone or input("Beli phone number (including +country code): ")
+        password = password or getpass.getpass("Beli password: ")
+    phone = re.sub(r"[\s().-]", "", phone)
+    if not re.fullmatch(r"\+[1-9][0-9]{6,14}", phone):
+        raise LoginError("BELI_PHONE must include the country code, e.g. +14155551234.")
+    if not password:
+        raise LoginError("Beli password cannot be empty.")
+    return phone, password
+
+
+def login(phone, password):
+    request = Request(
+        AUTH_API + "/api/token/",
+        data=json.dumps({"phone_no": phone, "password": password}).encode("utf-8"),
+        headers={
+            "Accept": "application/json", "Content-Type": "application/json",
+            "Origin": "https://localhost", "Referer": "https://localhost/",
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 16; SM-S928U) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/149.0.7827.91 Mobile Safari/537.36"
+            ),
+        },
+        method="POST",
+    )
+    try:
+        with build_opener(NoRedirects()).open(request, timeout=30) as response:
+            result = json.load(response)
+    except HTTPError as error:
+        error.close()
+        if error.code in (400, 401):
+            message = "Check BELI_PHONE and BELI_PASSWORD; Beli rejected the credentials."
+        elif error.code == 429:
+            message = "Beli rate-limited login. Wait before rerunning the workflow."
+        else:
+            message = "Beli rejected login; its unofficial API may have changed."
+        raise LoginError(f"Beli login returned HTTP {error.code}. {message}") from None
+    except URLError:
+        raise LoginError("Could not reach Beli login. Check the connection and TLS setup.") from None
+    except (ValueError, UnicodeError):
+        raise LoginError("Beli login returned invalid JSON.") from None
+    if not isinstance(result, dict) or not isinstance(result.get("access"), str) or not result["access"]:
+        raise LoginError("Beli login did not return an access token.")
+    return result["access"]
 
 
 def added_at(value):
@@ -73,14 +136,14 @@ def normalize(rows):
     return places
 
 
-def fetch_ranking(token_path):
-    tokens = json.loads(token_path.read_text())
-    tokens = request_tokens("/api/token/refresh/", {"refresh": tokens["refresh"]})
-    save_tokens(token_path, tokens)
-    claims = json.loads(base64.urlsafe_b64decode(tokens["access"].split(".")[1] + "==="))
+def fetch_ranking(access):
+    parts = access.split(".")
+    if len(parts) != 3:
+        raise ValueError("Invalid access token")
+    claims = json.loads(base64.urlsafe_b64decode(parts[1] + "==="))
     rows = []
     for category in CATEGORIES:
-        rows.extend(fetch_category(tokens["access"], claims["user_id"], category))
+        rows.extend(fetch_category(access, claims["user_id"], category))
     return rows
 
 
@@ -135,15 +198,26 @@ def export(rows):
     print(f"Exported {len(places)} ranked restaurants to public/data.json and public/restaurants.csv.")
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tokens", type=Path, default=DEFAULT_OUTPUT)
-    args = parser.parse_args()
+    parser.parse_args()
     try:
-        export(fetch_ranking(args.tokens.expanduser().absolute()))
+        export(fetch_ranking(login(*credentials())))
+    except LoginError as error:
+        print(f"Sync failed: {error}", file=sys.stderr)
+        return 1
     except HTTPError as error:
-        print(f"Beli returned HTTP {error.code}. If authorization expired, run python3 beli_token.py again.", file=sys.stderr)
-        sys.exit(1)
+        error.close()
+        print(f"Beli ranking request returned HTTP {error.code}. Previous export retained.", file=sys.stderr)
+        return 1
     except (OSError, ValueError, KeyError, RuntimeError) as error:
-        print(f"Sync failed ({type(error).__name__}). Check your token file and connection. Previous export retained if fetching failed.", file=sys.stderr)
-        sys.exit(1)
+        print(f"Sync failed ({type(error).__name__}). Check the connection and Beli response format. Previous export retained if fetching failed.", file=sys.stderr)
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        print("\nCancelled.", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

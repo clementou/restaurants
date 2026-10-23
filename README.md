@@ -31,12 +31,11 @@ cannot mix new controls with old sorting logic after a deployment.
 ## Refresh your Beli data
 
 ```sh
-python3 beli_token.py  # Interactive login; only needed initially or after expiry
-npm run sync
+npm run sync  # Prompts for your Beli phone number and password
 npm run deploy
 ```
 
-`sync_beli.py` refreshes the local session, fetches all five ranking categories
+`sync_beli.py` logs in for each run, fetches all five ranking categories
 (restaurants, coffee & tea, dessert, bars, and bakeries), and writes
 `public/data.json` and `public/restaurants.csv`. Commit the updated public files
 and push to GitHub to retain the snapshot in source control.
@@ -61,29 +60,33 @@ successful weekly snapshot commits keep this repository active.
 
 ### Weekly refresh credentials
 
-The workflow requires two GitHub Actions repository secrets:
+The workflow requires four GitHub Actions repository secrets:
 
-- `NETLIFY_AUTH_TOKEN`: a Netlify token authorized for this site and its Blobs.
+- `BELI_PHONE`: your Beli phone number, including the `+` country code.
+- `BELI_PASSWORD`: your Beli password.
+- `NETLIFY_AUTH_TOKEN`: a Netlify token authorized to deploy this site.
 - `CARTO_BASEMAP_API_KEY`: the same map key used by local builds.
 
-Beli tokens live in the site's private Netlify Blobs store `beli-sync`, key
-`tokens`. They are never committed or uploaded as workflow artifacts, and no
-public endpoint exposes the store. Each run restores them into a temporary file
-and persists the refreshed session even when fetching places subsequently fails.
-No Beli password is stored. Avoid running a local refresh at the same time as the
-workflow, since both may rotate the same session.
-
-To seed the session, or recover after Beli rejects/invalidates it, log in locally
-and replace the stored session using the authenticated Netlify CLI:
+Set or update the Beli credentials with the CLI's interactive prompts:
 
 ```sh
-python3 beli_token.py
-netlify blobs:set beli-sync tokens --input .beli-tokens.json --force
+gh secret set BELI_PHONE --repo clementou/restaurants
+gh secret set BELI_PASSWORD --repo clementou/restaurants
 ```
 
+Each run logs in with those credentials and keeps the access token only in
+memory. Beli credentials are available only to the sync step. No session files
+or Netlify Blobs are needed: Beli refresh tokens expire after seven days without
+rotation, so a fresh login avoids weekly session expiry. Local runs prompt for
+credentials or read `BELI_PHONE` and `BELI_PASSWORD` from the environment; the
+script does not load `.env` files or save credentials.
+
+If login fails, check the reported HTTP status and update the GitHub secrets
+if your credentials changed. For rate limiting, wait before retrying. Failed
+login or data fetching preserves the previous snapshot and skips deployment.
 Then run **Refresh Beli** from GitHub Actions. The workflow must be on the default
-branch for its weekly schedule to run. Beli's unofficial API can change; a failed
-run may require a new login or a script update.
+branch for its weekly schedule to run. Beli's unofficial API can change and may
+require a script update.
 
 Beli ranks are calculated **within each category**. The combined view sorts by
 the exact Beli score, displaying scores to one decimal place. Equal displayed
@@ -159,20 +162,16 @@ uses short-lived tokens with the Drive read-only scope, not a private key.
 The Google and Beli workflows share a concurrency group to prevent overlapping
 deployments. Renew your Takeout export schedule when its one-year period ends.
 
-The login script saves access/refresh tokens in `.beli-tokens.json` with mode
-`0600`. It never saves the password. Token files, `.env` files, and Netlify state
-are gitignored. The build publishes only `public/` and map library assets, never
-the repository root. Custom token files should also be kept outside `public/`.
+Passwords and tokens are never written by the sync script. Legacy token files,
+`.env` files, and Netlify state remain gitignored. The build publishes only
+`public/` and map library assets, never the repository root.
 
 The export uses an allowlist of place information and your scores. Account
 identity, visit dates, notes, and raw API responses are not published.
 
-Authentication is an unofficial API flow observed in the published Beli Maps
-extension v0.1.6: phone number + password to `/api/token/`, refresh token to
-`/api/token/refresh/`. It can change. A rejected refresh requires a new login;
-the local scripts do not upload tokens. The weekly workflow explicitly stores
-the session in private Netlify Blobs and accesses it from the GitHub Actions
-runner; credentials are never part of the published website.
+Authentication uses the unofficial Beli Maps login flow: phone number + password
+to `/api/token/`. Credentials and the returned access token stay in the sync
+process; they are never part of the published website.
 
 ## Deploy and route
 
