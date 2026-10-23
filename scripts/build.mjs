@@ -1,5 +1,7 @@
 import { cp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { matchDistinctions } from "./distinctions.mjs";
+import { mergeCollections } from "../public/model.js";
 
 try {
   process.loadEnvFile(".env");
@@ -14,6 +16,11 @@ if (!Array.isArray(data.places) || !data.places.length)
   throw new Error("Run npm run sync to export your Beli list first.");
 await rm("dist", { recursive: true, force: true });
 await cp("public", "dist", { recursive: true });
+const saved = JSON.parse(await readFile("public/google-maps.json", "utf8"));
+const catalogue = JSON.parse(await readFile("data/distinctions.json", "utf8"));
+const aliases = JSON.parse(await readFile("data/distinction-aliases.json", "utf8"));
+const distinctions = matchDistinctions(mergeCollections(data.places, saved.places), catalogue, aliases);
+await writeFile("dist/distinctions.json", JSON.stringify(distinctions) + "\n");
 await writeFile(
   "dist/map-config.js",
   `export const cartoKey = ${JSON.stringify(cartoKey)};\n`,
@@ -28,9 +35,11 @@ async function versionAsset(filename, contents) {
 }
 const modelFile = await versionAsset("model.js", await readFile("dist/model.js", "utf8"));
 const configFile = await versionAsset("map-config.js", await readFile("dist/map-config.js", "utf8"));
+const distinctionsFile = await versionAsset("distinctions.json", await readFile("dist/distinctions.json", "utf8"));
 const app = (await readFile("dist/app.js", "utf8"))
   .replace('"./model.js"', `"./${modelFile}"`)
-  .replace('"./map-config.js"', `"./${configFile}"`);
+  .replace('"./map-config.js"', `"./${configFile}"`)
+  .replace('"./distinctions.json"', `"./${distinctionsFile}"`);
 const appFile = await versionAsset("app.js", app);
 const stylesFile = await versionAsset("styles.css", await readFile("dist/styles.css", "utf8"));
 const html = (await readFile("dist/index.html", "utf8"))
@@ -51,5 +60,5 @@ await cp("node_modules/leaflet/dist/images", "dist/vendor/images", {
   recursive: true,
 });
 console.log(
-  `Built restaurant atlas with ${data.places.length} places. Only public/ and map libraries are published.`,
+  `Built restaurant atlas with ${data.places.length} ranked places and ${Object.keys(distinctions.places).length} distinction matches.`,
 );

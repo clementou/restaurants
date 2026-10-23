@@ -7,7 +7,37 @@ import {
   hasCoordinates,
   mergeCollections,
   rating,
+  ratingDistribution,
 } from "../public/model.js";
+
+test("rating distribution handles exact edges, perfect scores, and unrated saved places", () => {
+  const input = [0, 0.4999, 0.5, 6.9999, 7, 9.5, 10, null, undefined, NaN, -1, 11]
+    .map(score => ({ score }));
+  const result = ratingDistribution(input);
+  assert.equal(result.count, 7);
+  assert.equal(result.bins[0].count, 2);
+  assert.equal(result.bins[1].count, 1);
+  assert.equal(result.bins[13].count, 1);
+  assert.equal(result.bins[14].count, 1);
+  assert.equal(result.bins[19].count, 2);
+  assert.equal(result.bins.reduce((sum, bin) => sum + bin.count, 0), 7);
+  assert.equal(result.median, 6.9999);
+  assert.ok(Math.abs(result.mean - 34.4998 / 7) < 1e-10);
+  assert.equal(input[0].score, 0);
+});
+
+test("rating distribution gives empty states and computes summaries after filters", () => {
+  const empty = ratingDistribution([{ score: null }]);
+  assert.equal(empty.count, 0);
+  assert.equal(empty.mean, null);
+  assert.equal(empty.median, null);
+  assert.ok(empty.bins.every(bin => bin.count === 0));
+  const result = ratingDistribution(filterPlaces(places, { category: "RES" }));
+  assert.equal(result.count, 2);
+  assert.equal(result.mean, 8.9);
+  assert.equal(result.median, 8.9);
+  assert.equal(ratingDistribution([{ score: 10 }]).median, 10);
+});
 
 const places = [
   {

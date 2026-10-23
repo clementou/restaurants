@@ -4,6 +4,8 @@ import {
   filterPlaces,
   mergeCollections,
   isRated,
+  ratingDistribution,
+  awardGroups,
   defaultDirection,
   hasCoordinates,
   tier,
@@ -35,6 +37,33 @@ let places = [],
 const markers = new Map();
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const dropdowns = [];
+let distinctionsCheckedAt = "";
+let distinctionSourceDates = {};
+const awardListName = kind => kind === "world50bars" ? "Bars" : "Restaurants";
+
+function awardBadges(place, links = false) {
+  if (!place.awards?.length) return "";
+  return `<span class="place-awards">${awardGroups(place.awards).map(({ kind, entries, best }) => {
+    const award = entries[0];
+    const label = award.kind === "michelin"
+      ? (award.stars ? `Michelin ${"★".repeat(award.stars)}` : "Bib Gourmand")
+      : `50 Best ${awardListName(kind)} #${award.rank} · ${award.year}`;
+    const description = award.kind === "michelin"
+      ? (award.stars ? `${award.stars} Michelin ${award.stars === 1 ? "star" : "stars"}` : "Michelin Bib Gourmand — good quality, good value cooking")
+      : `The World’s 50 Best ${awardListName(kind)}: latest recorded appearance #${award.rank} in ${award.year}${award.rank > 50 ? " (51–100 extended list)" : ""}. ${entries.length} recorded editions; best recorded rank #${best.rank} (${best.year})`;
+    const title = `${description}. Source checked ${distinctionSourceDates[kind] || distinctionsCheckedAt}.`;
+    const url = safeURL(award.url);
+    return links && url
+      ? `<a class="award-badge ${esc(award.kind)}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}" aria-label="${esc(title)} Open source">${esc(label)} ↗</a>`
+      : `<span class="award-badge ${esc(award.kind)}" title="${esc(title)}" aria-label="${esc(title)}">${esc(label)}</span>`;
+  }).join("")}</span>`;
+}
+
+function awardHistory(place) {
+  const groups = awardGroups(place.awards).filter(group => group.kind !== "michelin");
+  if (!groups.length) return "";
+  return `<details class="award-history"><summary>50 Best ranking history</summary><div class="award-history-scroll"><table><caption>Recorded appearances; each year links to its source.</caption><thead><tr><th scope="col">Year</th><th scope="col">World list</th><th scope="col">Rank</th></tr></thead><tbody>${groups.flatMap(group => group.entries).sort((a, b) => b.year - a.year || a.kind.localeCompare(b.kind)).map(a => `<tr><th scope="row"><a href="${esc(safeURL(a.url))}" target="_blank" rel="noopener noreferrer">${a.year} ↗</a></th><td>${awardListName(a.kind)}</td><td>#${a.rank}${a.rank > 50 ? ' <span class="sr-only">extended list</span>' : ""}</td></tr>`).join("")}</tbody></table></div><p>Historical recognition, independent of your visit date. Ranks 51–100 are included where available in the archive.</p></details>`;
+}
 
 function initDropdowns() {
   let closeOpen = () => {};
@@ -194,7 +223,8 @@ function popupContent(place) {
   const website = safeURL(place.website),
     beli = safeURL(place.beliUrl);
   node.className = "place-popup";
-  node.innerHTML = `<div class="popup-eyebrow">${isRated(place) ? `#${place.rank} · ${esc(categories[place.category]).toUpperCase()}` : "WANT TO GO"} <span class="score ${tier(place)}">${rating(place)}</span></div><h2>${esc(place.name)}</h2><p>${esc([place.neighborhood, place.city, place.country].filter(Boolean).join(" · "))}</p><p>${esc(place.cuisines.join(" · "))}</p><div class="popup-links"><a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>${beli ? `<a href="${esc(beli)}" target="_blank" rel="noopener noreferrer">Beli ↗</a>` : ""}${website ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website ↗</a>` : ""}</div>`;
+  node.innerHTML = `<div class="popup-eyebrow">${isRated(place) ? `#${place.rank} · ${esc(categories[place.category]).toUpperCase()}` : "WANT TO GO"} <span class="score ${tier(place)}">${rating(place)}</span></div><h2>${esc(place.name)}</h2>${awardBadges(place, true)}<p>${esc([place.neighborhood, place.city, place.country].filter(Boolean).join(" · "))}</p><p>${esc(place.cuisines.join(" · "))}</p>${awardHistory(place)}<div class="popup-links"><a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>${beli ? `<a href="${esc(beli)}" target="_blank" rel="noopener noreferrer">Beli ↗</a>` : ""}${website ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website ↗</a>` : ""}</div>`;
+  node.addEventListener("toggle", () => map?.eachLayer(layer => layer.getPopup?.()?.isOpen() && layer.getPopup().update()), true);
   return node;
 }
 
@@ -277,8 +307,58 @@ function saveQuery() {
   );
 }
 
+function renderDistribution() {
+  if (!$("#rating-distribution").open) return;
+  const { bins, count, mean, median } = ratingDistribution(filtered);
+  const excluded = filtered.length - count;
+  $("#distribution-stats").innerHTML = [
+    ["Rated places", count.toLocaleString()],
+    ["Average", mean === null ? "—" : mean.toFixed(2)],
+    ["Median", median === null ? "—" : median.toFixed(2)],
+  ].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+  $("#distribution-context").textContent = count
+    ? `${state.category ? categories[state.category] : "All categories"} · Current filters${excluded ? ` · ${excluded.toLocaleString()} unrated places excluded` : ""}`
+    : "No rated places match these filters. Choose My rankings or clear your filters to see the distribution.";
+  const label = bin => `${bin.start.toFixed(1)}–${bin.end.toFixed(1)}`;
+  const detail = bin => `${label(bin)}${bin.end === 10 ? " (including 10)" : " (upper bound excluded)"}: ${bin.count} ${bin.count === 1 ? "place" : "places"} · ${count ? (100 * bin.count / count).toFixed(1) : "0.0"}%`;
+  $("#distribution-table").innerHTML = bins.map(bin => `<tr><th scope="row">${label(bin)}</th><td>${bin.count}</td><td>${count ? (100 * bin.count / count).toFixed(1) : "0.0"}%</td></tr>`).join("");
+  const hint = count ? "Hover, tap, or focus an interval to see its count." : "";
+  $("#distribution-detail").textContent = hint;
+  if (!count) { $("#distribution-chart").replaceChildren(); return; }
+  const left = 42, width = 696, baseline = 164, height = 136;
+  const peak = Math.max(...bins.map(bin => bin.count));
+  const ceiling = Math.max(2, Math.ceil(peak / 2) * 2);
+  const x = score => left + score / 10 * width;
+  const y = value => baseline - value / ceiling * height;
+  const points = bins.map(bin => [x((bin.start + bin.end) / 2), y(bin.count)]);
+  const curve = points.map(([px, py], i) => {
+    if (!i) return `M ${px} ${py}`;
+    const [prevX, prevY] = points[i - 1], mid = (prevX + px) / 2;
+    return `C ${mid} ${prevY}, ${mid} ${py}, ${px} ${py}`;
+  }).join(" ");
+  $("#distribution-chart").innerHTML = `<svg viewBox="0 0 760 210" role="group" aria-labelledby="distribution-svg-title distribution-svg-desc">
+    <title id="distribution-svg-title">Rating distribution for ${count} places</title>
+    <desc id="distribution-svg-desc">Number of places in half-point intervals from 0 to 10. Average ${mean.toFixed(2)}, median ${median.toFixed(2)}. Exact counts are available in the table below.</desc>
+    <text x="${left}" y="14" class="chart-axis-label">Places</text>
+    ${[0, ceiling / 2, ceiling].map(value => `<line class="chart-grid" x1="${left}" x2="${left + width}" y1="${y(value)}" y2="${y(value)}"/><text class="chart-tick" x="${left - 10}" y="${y(value) + 4}" text-anchor="end">${value}</text>`).join("")}
+    ${bins.map(bin => `<rect class="chart-bar" x="${x(bin.start) + 2}" y="${y(bin.count)}" width="${width / 20 - 4}" height="${baseline - y(bin.count)}"/>`).join("")}
+    <path class="chart-curve" d="${curve}"/>
+    ${Array.from({ length: 11 }, (_, i) => `<text class="chart-tick" x="${x(i)}" y="183" text-anchor="middle">${i}</text>`).join("")}
+    <text class="chart-axis-label" x="${left + width / 2}" y="204" text-anchor="middle">Rating / 10</text>
+    ${bins.map((bin, i) => `<rect class="chart-hit" data-bin="${i}" tabindex="0" role="img" aria-label="${detail(bin)}" x="${x(bin.start)}" y="26" width="${width / 20}" height="${baseline - 26}"><title>${detail(bin)}</title></rect>`).join("")}
+  </svg>`;
+  const showDetail = event => {
+    const hit = event.target.closest("[data-bin]");
+    if (hit) $("#distribution-detail").textContent = detail(bins[Number(hit.dataset.bin)]);
+  };
+  const chart = $("#distribution-chart svg");
+  for (const event of ["pointerover", "focusin", "click"])
+    chart.addEventListener(event, showDetail);
+}
+
 function render({ updateMap = true } = {}) {
   filtered = filterPlaces(places, state);
+  renderDistribution();
   $("#result-count").textContent =
     `${filtered.length.toLocaleString()} ${filtered.length === 1 ? "place" : "places"}${filtered.length !== places.length ? ` of ${places.length}` : " to explore"}`;
   $("#favorites").setAttribute("aria-pressed", String(state.favorites));
@@ -325,7 +405,7 @@ function render({ updateMap = true } = {}) {
                 month: "short", day: "numeric", year: "numeric",
               })
             : "Added date unavailable";
-          return `<${!hasCoordinates(place) ? `a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer"` : "button"} class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" ${hasCoordinates(place) ? `aria-pressed="${selectedId === place.id}"` : ""}><span class="rank">${isRated(place) ? String(place.rank).padStart(2, "0") : ""}</span><span class="place-info"><span class="place-name">${esc(place.name)}${isRated(place) && place.rank <= 3 ? '<span class="top-star" aria-label="Top three">✳</span>' : ""}</span><span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2), ...(place.wantToGo ? ["Want to go"] : [])].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span>${state.sort === "recent" ? `<span class="place-location">${esc(addedDate)}</span>` : ""}</span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only">${isRated(place) ? " out of 10" : "Want to go, not rated"}</span></span><span class="row-arrow" aria-hidden="true">↗</span></${!hasCoordinates(place) ? "a" : "button"}>`;
+          return `<${!hasCoordinates(place) ? `a href="${esc(mapsURL(place))}" target="_blank" rel="noopener noreferrer"` : "button"} class="place-row${selectedId === place.id ? " selected" : ""}" data-id="${place.id}" ${hasCoordinates(place) ? `aria-pressed="${selectedId === place.id}"` : ""}><span class="rank">${isRated(place) ? String(place.rank).padStart(2, "0") : ""}</span><span class="place-info"><span class="place-name">${esc(place.name)}</span>${awardBadges(place)}<span class="place-location">${esc([place.city, place.country].filter(Boolean).join(" · "))}</span><span class="place-cuisine">${esc([categories[place.category], ...place.cuisines.slice(0, 2), ...(place.wantToGo ? ["Want to go"] : [])].join(" · "))}${price ? `<span class="price">${esc(price)}</span>` : ""}${closed ? '<span class="closed">Closed</span>' : ""}</span>${state.sort === "recent" ? `<span class="place-location">${esc(addedDate)}</span>` : ""}</span><span class="score ${tier(place)}">${rating(place)}<span class="sr-only">${isRated(place) ? " out of 10" : "Want to go, not rated"}</span></span><span class="row-arrow" aria-hidden="true">↗</span></${!hasCoordinates(place) ? "a" : "button"}>`;
         })
         .join("")
     : '<div class="empty-state"><span aria-hidden="true">∅</span><h2>No places at this table.</h2><p>Try another search or clear your filters.</p><button id="empty-reset">Show all restaurants</button></div>';
@@ -370,6 +450,20 @@ async function init() {
   if (!savedResponse.ok) throw new Error("Could not load saved places");
   const saved = await savedResponse.json();
   places = mergeCollections(data.places, saved.places);
+  try {
+    const response = await fetch(new URL("./distinctions.json", import.meta.url));
+    if (!response.ok) throw new Error("Distinctions unavailable");
+    const distinctions = await response.json();
+    distinctionsCheckedAt = new Date(distinctions.checkedAt).toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    });
+    distinctionSourceDates = Object.fromEntries(Object.entries(distinctions.sourceCheckedAt || {}).map(([kind, date]) => [kind, new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })]));
+    places = places.map(place => ({ ...place, awards: distinctions.places[place.id] || [] }));
+    const coverage = Object.entries(distinctions.coverage || {}).map(([kind, editions]) => `${awardListName(kind)} ${editions[0].year}–${editions.at(-1).year} (${editions.length} editions)`).join("; ");
+    $("#distinctions-note").textContent = `50 Best history checked ${distinctionsCheckedAt} (UTC): ${coverage}. Michelin snapshot checked ${distinctionSourceDates.michelin || distinctionsCheckedAt}. Saved places without a verified location may have no badge.`;
+  } catch {
+    $("#distinctions-note").textContent = "Restaurant distinctions are temporarily unavailable. Your personal ratings are still shown.";
+  }
   $("#total").textContent = places.length.toLocaleString();
   $("#countries").textContent = new Set(
     places.map((p) => p.country).filter(Boolean),
@@ -426,6 +520,7 @@ async function init() {
     map = null;
   }
   render();
+  $("#rating-distribution").addEventListener("toggle", renderDistribution);
   $("#search").addEventListener("input", (event) => {
     state.query = event.target.value;
     render();

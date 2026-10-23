@@ -167,6 +167,30 @@
             </div>
           </section>
         </div>
+        <details class="distribution-disclosure" id="rating-distribution">
+          <summary>Rating distribution <span>Explore the numbers</span></summary>
+          <section class="distribution" aria-labelledby="distribution-title">
+          <div class="distribution-heading">
+            <div>
+              <p class="eyebrow">THE SHAPE OF MY RATINGS</p>
+              <h2 id="distribution-title">Rating distribution</h2>
+            </div>
+            <dl id="distribution-stats" class="distribution-stats"></dl>
+          </div>
+          <p id="distribution-context" class="distribution-note">Loading ratings…</p>
+          <div id="distribution-chart"></div>
+          <p id="distribution-detail" class="distribution-note" aria-live="polite"></p>
+          <p class="distribution-note">Half-point intervals; the curve connects interval counts. Beli ranks each category separately. Scores alone don’t record the original liked / fine / disliked choices.</p>
+          <details class="distribution-data">
+            <summary>View rating counts</summary>
+            <table>
+              <caption>Ratings in the current filters. Each interval includes its lower bound; the last also includes 10.</caption>
+              <thead><tr><th scope="col">Rating interval</th><th scope="col">Places</th><th scope="col">Share</th></tr></thead>
+              <tbody id="distribution-table"></tbody>
+            </table>
+          </details>
+          </section>
+        </details>
       </section>
       <footer class="page-footer">
         <span>A little hungry, a little curious.</span
@@ -174,6 +198,13 @@
           >Ranked on Beli <span aria-hidden="true">↗</span>
           <span class="divider">·</span> Made by Clement</span
         >
+        <details class="distinctions-info">
+          <summary>About restaurant distinctions</summary>
+          <p id="distinctions-note">Loading distinction sources…</p>
+          <p>Michelin stars and Bib Gourmand apply to the matched location. 50 Best badges distinguish restaurants from bars and show the latest recorded appearance. Open a place’s map popup for its year-by-year ranking history. Historical awards are independent of your visit date.</p>
+          <p>Historical archives include the top 50 through 2022 and ranks 1–100 from 2023 onward. There was no restaurant list in 2020. An absent badge means no verified match in this snapshot.</p>
+          <p><a href="https://guide.michelin.com/us/en/restaurants/all-starred/bib-gourmand" target="_blank" rel="noopener noreferrer">Michelin Guide ↗</a> · <a href="https://www.the50.com/restaurants/best-in-the-world/list/1-50" target="_blank" rel="noopener noreferrer">World’s 50 Best Restaurants ↗</a> · <a href="https://www.the50.com/bars/best-in-the-world/list/1-50" target="_blank" rel="noopener noreferrer">World’s 50 Best Bars ↗</a></p>
+        </details>
       </footer>
     </main>
     <noscript

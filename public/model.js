@@ -19,6 +19,29 @@ const addedTime = (place) => {
 const byRating = (a, b) => b.score - a.score || a.rank - b.rank;
 export const isRated = (place) => Number.isFinite(place.score);
 
+export function awardGroups(awards = []) {
+  return ["michelin", "world50", "world50bars"].map(kind => {
+    const entries = awards.filter(a => a.kind === kind).sort((a, b) => b.year - a.year);
+    const best = entries.reduce((best, a) => !best || a.rank < best.rank ? a : best, null);
+    return { kind, entries, best };
+  }).filter(group => group.entries.length);
+}
+
+export function ratingDistribution(places) {
+  const scores = places.filter(isRated).map(p => p.score)
+    .filter(score => score >= 0 && score <= 10).sort((a, b) => a - b);
+  const bins = Array.from({ length: 20 }, (_, index) => ({
+    start: index / 2, end: (index + 1) / 2, count: 0,
+  }));
+  for (const score of scores) bins[Math.min(19, Math.floor(score * 2))].count++;
+  const count = scores.length, middle = Math.floor(count / 2);
+  return {
+    bins, count,
+    mean: count ? scores.reduce((sum, score) => sum + score, 0) / count : null,
+    median: count ? (count % 2 ? scores[middle] : (scores[middle - 1] + scores[middle]) / 2) : null,
+  };
+}
+
 // Google's standard place IDs encode the feature CID in their last eight bytes.
 // Match only those IDs; never collapse businesses just because names agree.
 const placeCid = (placeId) => {

@@ -94,6 +94,74 @@ scores can still have distinct underlying scores and ranks. The CSV retains the
 exact score and category rank. The download button exports the current filters;
 `restaurants.csv` is the full snapshot.
 
+Expand **Rating distribution** below the list and map to explore the chart.
+It starts collapsed and follows all current filters and
+excludes unrated saved places. It shows counts in half-point intervals, with a
+curve connecting those counts, plus the average and median of exact scores.
+Intervals include their lower bound; the final interval also includes 10.
+Hover, tap, or keyboard-focus an interval for its count, or expand the accessible
+table. Categories are ranked separately, and the export does not contain the
+original liked / fine / disliked bucket choices.
+
+### Restaurant distinctions
+
+Badges show Michelin stars, Bib Gourmand, and separate World's 50 Best Restaurants
+and World's 50 Best Bars rankings. Each 50 Best badge shows the latest recorded
+appearance; its tooltip includes the best recorded rank and number of editions.
+Open a place's map popup and expand **50 Best ranking history** to see every
+matched edition with a source link. Historical recognition is independent of
+the date you visited or added the place. The footer's
+**About restaurant distinctions** disclosure shows the source check date and scope.
+
+`data/distinctions.json` is a static catalogue of award facts fetched directly
+from the official public Michelin listings and World's 50 Best list. The initial
+snapshot contains 7,680 Michelin star / Bib Gourmand locations and 2,400 historical
+50 Best appearances: restaurants **2002–2025** (23 editions, 1,300 entries) and
+bars **2009–2026** (18 editions, 1,100 entries). There was no restaurant edition
+in 2020. The official archives provide ranks **1–50 through 2022** and **1–100
+from 2023**; missing older 51–100 results are not treated as evidence that a venue
+was unlisted. Edition years come from the source, not the current calendar year.
+No reviews or photos are copied. Refresh separately from personal rankings:
+
+```sh
+npm run sync:distinctions  # Requires Python 3 and curl; downloads the public lists
+python3 sync_distinctions.py --only fifty  # Both full 50 Best histories; keeps Michelin and its check date
+npm run build
+```
+
+The importer checks page totals, distinct Michelin IDs, contiguous archive years
+(except restaurant 2020), and complete unique 1–50 or 1–100 ranks in each edition
+before atomically replacing the catalogue. `data/fifty-corrections.json` records
+seven verified corrections to mistakes in the live historical archives, with
+links to the original published 2016 restaurant list and the 2010/2012 Drinks
+International bar supplements. Corrections check the original rank before
+applying and preserve the archive URL alongside the corrected source. Unexpected
+source changes fail validation instead of silently guessing ranks. A failed fetch preserves
+the previous snapshot. For interrupted downloads, use
+`python3 sync_distinctions.py --cache-dir /tmp/restaurant-awards-YYYY-MM-DD` to
+resume that day's validated pages; use a fresh directory on each refresh.
+The source check date describes when this snapshot was retrieved, not the award
+year. Catalogue updates are manual; ordinary builds and Beli refreshes use the
+committed snapshot without contacting award sites.
+
+Every build matches the current collection and emits only the small matched
+`dist/distinctions.json` payload, fingerprinted with the app assets. Michelin
+matching requires an exact normalized name plus coordinates within 150 metres.
+Reviewed name aliases in `data/distinction-aliases.json` still require that same
+location check: Steirereck / Steirereck im Stadtpark, Petiscos “Downtown” /
+Petiscos, Pausa Bar & Cookery / Pausa, and Z & Y Restaurant / Z & Y. In particular,
+the separate Z & Y Peking Duck location does not inherit Z & Y's Bib Gourmand.
+50 Best requires an exact normalized name and city, or a reviewed business-ID
+alias with the same city. The Paris Robuchon entry is explicitly mapped to the
+historical Saint-Germain name, verified against its Beli website
+`atelier-robuchon-saint-germain.com`; other branches receive no inherited award.
+Ambiguity is checked within each list and year, preserving legitimate appearances
+across years. Closed places may keep historical 50 Best recognition but do not
+receive current Michelin badges. Saved Google Maps entries without location data remain
+unmatched unless merged with a located Beli record. An absent badge is not a
+claim that a restaurant has no awards. A failed badge fetch does not prevent
+the collection from loading.
+
 Choose **Date added** to show the newest additions to your Beli rankings
 first. Use the direction button beside the sort dropdown to switch between
 newest/oldest, highest/lowest rating, or A–Z/Z–A. Shared URLs preserve direction
@@ -116,7 +184,8 @@ time), a `categories` code-to-label mapping, and the `places` array. Each place
 includes its Beli rating-record `id`, `businessId`, `category`, category `rank`,
 exact numeric `score`, nullable `addedAt`, name, location, cuisine array, and external links. `lat`
 and `lng` are nullable. These are full snapshots, independent of UI filters;
-use `id` to match rating records across exports. The HTML advertises both files
+use `businessId` plus `category` to match places across exports because re-rating
+can replace the rating-record `id`. The HTML advertises both files
 with alternate-format links and visible footer links.
 
 ## Credentials and public data
@@ -163,8 +232,9 @@ The Google and Beli workflows share a concurrency group to prevent overlapping
 deployments. Renew your Takeout export schedule when its one-year period ends.
 
 Passwords and tokens are never written by the sync script. Legacy token files,
-`.env` files, and Netlify state remain gitignored. The build publishes only
-`public/` and map library assets, never the repository root.
+`.env` files, and Netlify state remain gitignored. The build publishes `public/`,
+matched distinction facts, and map library assets, never the repository root
+or the full award catalogue.
 
 The export uses an allowlist of place information and your scores. Account
 identity, visit dates, notes, and raw API responses are not published.

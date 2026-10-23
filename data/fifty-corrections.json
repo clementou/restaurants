@@ -1,0 +1,9 @@
+[
+  {"series":"restaurants","year":2016,"name":"White Rabbit","from":23,"rank":18,"source":"https://img.lalr.co/cms/2016/06/14040434/TheWorlds50BestList2016.pdf"},
+  {"series":"restaurants","year":2016,"name":"Nahm","from":22,"rank":37,"source":"https://img.lalr.co/cms/2016/06/14040434/TheWorlds50BestList2016.pdf"},
+  {"series":"bars","year":2010,"name":"Planet Bar","from":29,"rank":30,"source":"https://drinksint.com/files/Supplements/2010/Bar-Supplement-2010.pdf"},
+  {"series":"bars","year":2010,"name":"Hemingway Bar","from":39,"rank":40,"source":"https://drinksint.com/files/Supplements/2010/Bar-Supplement-2010.pdf"},
+  {"series":"bars","year":2010,"name":"Buddha Bar","city":"Kiev","from":40,"rank":39,"source":"https://drinksint.com/files/Supplements/2010/Bar-Supplement-2010.pdf"},
+  {"series":"bars","year":2012,"name":"Nottingham Forest","from":15,"rank":41,"source":"https://drinksint.com/files/Supplements/2012/Drinks-International-The-Worlds-50-Best-Bars-2012.pdf"},
+  {"series":"bars","year":2012,"name":"28 HongKong Street","from":10,"rank":42,"source":"https://drinksint.com/files/Supplements/2012/Drinks-International-The-Worlds-50-Best-Bars-2012.pdf"}
+]

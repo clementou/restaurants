@@ -541,11 +541,30 @@ a.place-row {
   font-weight: 600;
   line-height: 1.4;
 }
-.top-star {
+.place-awards { display: flex; flex-wrap: wrap; gap: 5px; }
+.award-badge {
+  display: inline-block;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--wine);
-  margin-left: 8px;
-  font-size: 15px;
+  background: var(--paper);
+  text-decoration: none;
 }
+.award-badge.world50, .award-badge.world50bars { color: var(--green); }
+.place-popup .place-awards { margin: 12px 0; }
+.award-history { font-size: 10px; margin: 12px 0; }
+.award-history summary { cursor: pointer; color: var(--green); }
+.award-history-scroll { max-height: 180px; overflow-y: auto; margin-top: 8px; }
+.award-history table { width: 100%; border-collapse: collapse; text-align: left; font-variant-numeric: tabular-nums; }
+.award-history caption { text-align: left; font-size: 9px; color: var(--muted); padding-bottom: 6px; }
+.award-history th, .award-history td { padding: 5px 4px; border-bottom: 1px solid var(--line); }
+.award-history td:last-child { text-align: right; }
+.award-history summary:focus-visible { outline: 2px solid var(--wine); outline-offset: 3px; }
 .place-location {
   color: #757a6b;
   font-size: 10px;
@@ -816,6 +835,89 @@ a.place-row {
   font-size: 11px;
   border-radius: 6px;
 }
+.distribution {
+  padding: 24px 28px;
+  border-top: 1px solid var(--line);
+}
+.distribution-disclosure { border-top: 1px solid var(--line); }
+.distribution-disclosure > summary {
+  cursor: pointer;
+  padding: 15px 20px;
+  color: var(--green);
+  font-size: 11px;
+}
+.distribution-disclosure > summary span { color: var(--muted); margin-left: 12px; font-size: 10px; }
+.distribution-disclosure > summary:focus-visible,
+.distinctions-info > summary:focus-visible { outline: 2px solid var(--wine); outline-offset: -3px; }
+.distinctions-info { width: 100%; font-size: 10px; line-height: 1.6; }
+.distinctions-info summary { cursor: pointer; width: fit-content; color: var(--green); }
+.distinctions-info p { max-width: 720px; }
+.distribution-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.distribution .eyebrow {
+  margin: 0 0 6px;
+  font-size: 9px;
+}
+.distribution h2 {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 30px;
+  font-weight: 400;
+}
+.distribution-stats {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+}
+.distribution-stats dt {
+  font-size: 10px;
+  color: var(--muted);
+}
+.distribution-stats dd {
+  margin: 3px 0 0;
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+  color: var(--green);
+}
+.distribution-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
+#distribution-chart svg {
+  display: block;
+  width: 100%;
+  max-height: 270px;
+  margin-top: 16px;
+  overflow: visible;
+}
+.chart-grid { stroke: var(--line); stroke-width: 1; }
+.chart-tick, .chart-axis-label { fill: var(--muted); font-size: 11px; }
+.chart-bar { fill: var(--sage); }
+.chart-curve { fill: none; stroke: var(--green); stroke-width: 2.5; }
+.chart-hit { fill: transparent; cursor: crosshair; }
+.chart-hit:hover, .chart-hit:focus { fill: #52645018; }
+.chart-hit:focus-visible { outline: 2px solid var(--wine); outline-offset: -2px; }
+#distribution-detail { color: var(--green); min-height: 18px; }
+.distribution-data { margin-top: 12px; font-size: 11px; }
+.distribution-data summary { cursor: pointer; color: var(--green); width: fit-content; }
+.distribution-data summary:focus-visible { outline: 2px solid var(--wine); outline-offset: 4px; }
+.distribution-data table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 520px; }
+.distribution-data caption { text-align: left; color: var(--muted); line-height: 1.6; padding-bottom: 8px; }
+.distribution-data th, .distribution-data td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: right; }
+.distribution-data th:first-child { text-align: left; }
+@media (max-width: 600px) {
+  .distribution { padding: 20px 16px; }
+  .distribution-stats { gap: 24px; }
+  #distribution-chart svg { min-height: 140px; }
+  .chart-tick, .chart-axis-label { font-size: 20px; }
+}
 .page-footer {
   display: flex;
   flex-wrap: wrap;
@@ -1011,6 +1113,14 @@ a.place-row {
   }
   .map-panel {
     border: 0;
+  }
+  .leaflet-popup-content {
+    max-height: clamp(320px, calc(100dvh - 430px), 550px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .map-panel:has(.leaflet-popup) .map-top {
+    visibility: hidden;
   }
   .workspace[data-view="list"] .map-panel {
     display: none;
